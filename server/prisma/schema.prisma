@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  realName  String   @map("real_name") @db.VarChar(50)
+  role      Role     @default(merchant)
+  phone     String?  @db.VarChar(20)
+  avatar    String?  @db.VarChar(500)
+  status    Int      @default(1) @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  merchantOrders      Order[]            @relation("MerchantOrders")
+  salespersonOrders   Order[]            @relation("SalespersonOrders")
+  makerOrders         Order[]            @relation("MakerOrders")
+  deliveryOrders      Order[]            @relation("DeliveryOrders")
+  adminPermissions     AdminPermission[]
+  orderFlows          OrderFlow[]
+  earnings            Earning[]
+  withdrawals         Withdrawal[]
+  promotionCodes      PromotionCode[]
+  merchantBindings    MerchantBinding[]  @relation("MbMerchant")
+  promoterBindings    MerchantBinding[]  @relation("MbPromoter")
+
+  @@map("users")
+}
+
+enum Role {
+  boss
+  admin
+  salesperson
+  maker
+  delivery
+  promoter
+  merchant
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(50)
+  code        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rolePermissions  RolePermission[]
+  adminPermissions AdminPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  role         Role
+  permissionId Int      @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+model AdminPermission {
+  id           Int      @id @default(autoincrement())
+  adminId      Int      @map("admin_id")
+  permissionId Int      @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  admin      User       @relation(fields: [adminId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([adminId, permissionId])
+  @@map("admin_permissions")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  products        Product[]
+  commissionRules CommissionRule[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  categoryId  Int      @map("category_id")
+  price       Decimal  @db.Decimal(10, 2)
+  image       String?  @db.VarChar(500)
+  unit        String?  @default("杯") @db.VarChar(10)
+  description String?  @db.Text
+  status      Int      @default(1) @db.TinyInt
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  orderNo        String      @unique @map("order_no") @db.VarChar(32)
+  merchantId     Int         @map("merchant_id")
+  salespersonId  Int?        @map("salesperson_id")
+  makerId        Int?        @map("maker_id")
+  deliveryId     Int?        @map("delivery_id")
+  totalAmount    Decimal     @map("total_amount") @db.Decimal(10, 2)
+  status         OrderStatus @default(pending)
+  note           String?     @db.Text
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  merchant    User        @relation("MerchantOrders", fields: [merchantId], references: [id])
+  salesperson User?       @relation("SalespersonOrders", fields: [salespersonId], references: [id])
+  maker       User?       @relation("MakerOrders", fields: [makerId], references: [id])
+  delivery    User?       @relation("DeliveryOrders", fields: [deliveryId], references: [id])
+  items       OrderItem[]
+  flows       OrderFlow[]
+  earnings    Earning[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  pending
+  accepted
+  making
+  made
+  delivering
+  delivered
+  cancelled
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int     @map("order_id")
+  productId Int     @map("product_id")
+  quantity  Int     @default(1)
+  price     Decimal @db.Decimal(10, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model OrderFlow {
+  id         Int      @id @default(autoincrement())
+  orderId    Int      @map("order_id")
+  fromRole   Role     @map("from_role")
+  toRole     Role     @map("to_role")
+  operatorId Int      @map("operator_id")
+  action     String   @db.VarChar(50)
+  remark     String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order    Order @relation(fields: [orderId], references: [id])
+  operator User  @relation(fields: [operatorId], references: [id])
+
+  @@map("order_flows")
+}
+
+model CommissionRule {
+  id         Int      @id @default(autoincrement())
+  categoryId Int      @map("category_id")
+  role       Role
+  percentage Decimal  @db.Decimal(5, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([categoryId, role])
+  @@map("commission_rules")
+}
+
+model Earning {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  orderId   Int           @map("order_id")
+  orderNo   String        @map("order_no") @db.VarChar(32)
+  amount    Decimal       @db.Decimal(10, 2)
+  role      Role
+  type      EarningType   @default(commission)
+  status    EarningStatus @default(pending_settle)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("earnings")
+}
+
+enum EarningType {
+  commission
+  reward
+}
+
+enum EarningStatus {
+  pending_settle
+  settled
+  withdrawn
+}
+
+model Withdrawal {
+  id          Int              @id @default(autoincrement())
+  userId      Int              @map("user_id")
+  amount      Decimal          @db.Decimal(10, 2)
+  accountType String           @map("account_type") @db.VarChar(20)
+  accountInfo String           @map("account_info") @db.VarChar(200)
+  status      WithdrawalStatus @default(pending)
+  remark      String?          @db.VarChar(500)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  processedAt DateTime?        @map("processed_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("withdrawals")
+}
+
+enum WithdrawalStatus {
+  pending
+  approved
+  rejected
+}
+
+model PromotionCode {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique @db.VarChar(20)
+  promoterId Int      @map("promoter_id")
+  status     Int      @default(1) @db.TinyInt
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  promoter User @relation(fields: [promoterId], references: [id])
+
+  @@map("promotion_codes")
+}
+
+model MerchantBinding {
+  id         Int      @id @default(autoincrement())
+  merchantId Int      @unique @map("merchant_id")
+  promoterId Int      @map("promoter_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  merchant User @relation("MbMerchant", fields: [merchantId], references: [id])
+  promoter User @relation("MbPromoter", fields: [promoterId], references: [id])
+
+  @@map("merchant_bindings")
+}
