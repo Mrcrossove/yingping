@@ -10,7 +10,7 @@ set -e
 
 # === 配置变量 (根据你的服务器修改) ===
 PROJECT_DIR="/opt/beverage-order"
-SERVER_IP="你的服务器IP"          # 例如 1.2.3.4
+SERVER_IP="118.24.104.69"
 MYSQL_ROOT_PASS="your_db_password"
 
 echo "=========================================="
