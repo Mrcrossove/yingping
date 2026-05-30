@@ -86,11 +86,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onShow } from 'vue'
+import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { orderApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 
-const uni = (globalThis as any).uni
 const userStore = useUserStore()
 const orders = ref<any[]>([])
 const showManualOrder = ref(false)

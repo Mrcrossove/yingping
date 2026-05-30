@@ -12,7 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onShow } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { promotionApi } from '@/api/index'
 
 const myCode = ref<any>(null)

@@ -26,7 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onShow } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { withdrawalApi } from '@/api/index'
 
 const form = ref({ amount: '', accountType: '', accountInfo: '' })

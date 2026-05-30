@@ -35,7 +35,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onLoad, computed } from 'vue'
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { orderApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 

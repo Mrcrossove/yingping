@@ -29,7 +29,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onShow } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { earningApi } from '@/api/index'
 
 const earningsData = ref<any>({ list: [], pendingAmount: 0, withdrawnAmount: 0 })

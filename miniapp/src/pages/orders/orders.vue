@@ -19,7 +19,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onShow } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { orderApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 
