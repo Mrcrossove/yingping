@@ -47,6 +47,21 @@ export class OrderController {
     return ApiResult.success(data, '派单成功');
   }
 
+
+  @Post(':id/dispatch-both')
+  @Roles('salesperson', 'admin', 'boss')
+  async dispatchBoth(@Param('id') id: string, @Body('makerId') makerId: number, @Body('deliveryId') deliveryId: number, @Request() req) {
+    const data = await this.orderService.dispatchBoth(+id, makerId, deliveryId, req.user.id);
+    return ApiResult.success(data, '派单成功');
+  }
+
+  @Post(':id/maker-start')
+  @Roles('maker')
+  async makerStart(@Param('id') id: string, @Request() req) {
+    const data = await this.orderService.makerStartMaking(+id, req.user.id);
+    return ApiResult.success(data, '开始制作');
+  }
+
   @Post(':id/maker-complete')
   @Roles('maker')
   async makerComplete(@Param('id') id: string, @Request() req) {
@@ -59,6 +74,14 @@ export class OrderController {
   async dispatchToDelivery(@Param('id') id: string, @Body('deliveryId') deliveryId: number, @Request() req) {
     const data = await this.orderService.dispatchToDelivery(+id, deliveryId, req.user.id);
     return ApiResult.success(data, '派单成功');
+  }
+
+
+  @Post(':id/delivery-start')
+  @Roles('delivery')
+  async deliveryStart(@Param('id') id: string, @Request() req) {
+    const data = await this.orderService.deliveryStartDelivering(+id, req.user.id);
+    return ApiResult.success(data, '开始配送');
   }
 
   @Post(':id/delivery-complete')

@@ -27,8 +27,10 @@
 
       <!-- 员工操作 -->
       <view v-if="canOperate" class="action-bar">
-        <button v-if="order.status === 'making'" @click="handleMakerComplete" class="action-btn">制作完成</button>
-        <button v-if="order.status === 'delivering'" @click="handleDeliveryComplete" class="action-btn">确认送达</button>
+        <button v-if="userStore.user?.role === 'maker' && order.status === 'making'" @click="handleMakerStart" class="action-btn">开始制作</button>
+        <button v-if="userStore.user?.role === 'maker' && order.status === 'making'" @click="handleMakerComplete" class="action-btn primary">制作完成</button>
+        <button v-if="userStore.user?.role === 'delivery' && order.status === 'made'" @click="handleDeliveryStart" class="action-btn">去配送</button>
+        <button v-if="userStore.user?.role === 'delivery' && order.status === 'delivering'" @click="handleDeliveryComplete" class="action-btn primary">确认送达</button>
       </view>
     </template>
   </view>
@@ -45,14 +47,14 @@ const order = ref<any>(null)
 
 const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
-  made: '已制作', delivering: '配送中', delivered: '已完成', cancelled: '已取消',
+  made: '已制作', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
 }
 
 const canOperate = computed(() => {
   if (!order.value || !userStore.user) return false
   const role = userStore.user.role
-  if (role === 'maker' && order.value.status === 'making') return true
-  if (role === 'delivery' && order.value.status === 'delivering') return true
+  if (role === 'maker' && (order.value.status === 'making')) return true
+  if (role === 'delivery' && (order.value.status === 'made' || order.value.status === 'delivering')) return true
   return false
 })
 
@@ -62,9 +64,21 @@ onLoad(async (options: any) => {
   order.value = await orderApi.detail(+id)
 })
 
+async function handleMakerStart() {
+  await orderApi.makerStart(order.value.id)
+  uni.showToast({ title: '开始制作', icon: 'success' })
+  order.value = await orderApi.detail(order.value.id)
+}
+
 async function handleMakerComplete() {
   await orderApi.makerComplete(order.value.id)
   uni.showToast({ title: '制作完成', icon: 'success' })
+  order.value = await orderApi.detail(order.value.id)
+}
+
+async function handleDeliveryStart() {
+  await orderApi.deliveryStart(order.value.id)
+  uni.showToast({ title: '开始配送', icon: 'success' })
   order.value = await orderApi.detail(order.value.id)
 }
 
@@ -88,6 +102,7 @@ async function handleDeliveryComplete() {
 .flow-action { font-size: 13px; font-weight: bold; display: block; }
 .flow-time { font-size: 11px; color: #999; }
 .action-bar { margin-top: 20px; }
-.action-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; }
+.action-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
+.action-btn.primary { background: #67C23A; }
 .empty { text-align: center; padding: 60px 0; color: #999; }
 </style>

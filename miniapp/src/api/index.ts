@@ -20,7 +20,11 @@ export const orderApi = {
   list: (params?: any) => get('/orders', params),
   detail: (id: number) => get(`/orders/${id}`),
   accept: (id: number) => post(`/orders/${id}/accept`),
+  dispatchToMaker: (id: number, makerId: number) => post(`/orders/${id}/dispatch-maker`, { makerId }),
+  dispatchToDelivery: (id: number, deliveryId: number) => post(`/orders/${id}/dispatch-delivery`, { deliveryId }),
+  makerStart: (id: number) => post(`/orders/${id}/maker-start`),
   makerComplete: (id: number) => post(`/orders/${id}/maker-complete`),
+  deliveryStart: (id: number) => post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => post(`/orders/${id}/delivery-complete`),
   manualCreate: (data: any) => post('/orders/manual', data),
 }

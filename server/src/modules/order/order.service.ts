@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus, Role } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => WebsocketGateway))
+    private wsGateway: WebsocketGateway,
+  ) {}
 
   async create(dto: { items: { productId: number; quantity: number }[]; note?: string }, merchantId: number) {
     const orderNo = this.generateOrderNo();
@@ -155,6 +160,66 @@ export class OrderService {
     return updated;
   }
 
+
+  async dispatchBoth(orderId: number, makerId: number, deliveryId: number, operatorId: number) {
+    const order = await this.findOne(orderId);
+    if (order.status !== 'accepted') throw new BadRequestException('订单状态不正确');
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        makerId,
+        deliveryId,
+        status: 'making',
+        flows: {
+          create: [
+            {
+              fromRole: 'salesperson',
+              toRole: 'maker',
+              operatorId,
+              action: '派单给制作员',
+            },
+            {
+              fromRole: 'salesperson',
+              toRole: 'delivery',
+              operatorId,
+              action: '派单给配送员',
+            },
+          ],
+        },
+      },
+    });
+
+    this.wsGateway.notifyNewTask(makerId, { orderId, type: 'making' });
+    this.wsGateway.notifyNewTask(deliveryId, { orderId, type: 'waiting' });
+
+    return updated;
+  }
+
+
+  async makerStartMaking(orderId: number, makerId: number) {
+    const order = await this.findOne(orderId);
+    if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        flows: {
+          create: {
+            fromRole: 'maker',
+            toRole: 'maker',
+            operatorId: makerId,
+            action: '开始制作',
+          },
+        },
+      },
+    });
+
+    this.wsGateway.notifyOrderStatusChange(orderId, 'making', '制作员已开始制作');
+
+    return updated;
+  }
+
   async makerComplete(orderId: number, makerId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
@@ -173,6 +238,33 @@ export class OrderService {
         },
       },
     });
+
+    this.wsGateway.notifyOrderStatusChange(orderId, 'made', '制作已完成，等待配送');
+    return updated;
+  }
+
+
+  async deliveryStartDelivering(orderId: number, deliveryId: number) {
+    const order = await this.findOne(orderId);
+    if (order.status !== 'made') throw new BadRequestException('订单状态不正确，请等待制作完成');
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'delivering',
+        flows: {
+          create: {
+            fromRole: 'delivery',
+            toRole: 'merchant',
+            operatorId: deliveryId,
+            action: '开始配送',
+          },
+        },
+      },
+    });
+
+    this.wsGateway.notifyOrderStatusChange(orderId, 'delivering', '配送员已取货出发');
+
     return updated;
   }
 
@@ -205,27 +297,27 @@ export class OrderService {
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
-        status: 'delivered',
+        status: 'completed',
         flows: {
           create: {
             fromRole: 'delivery',
             toRole: 'merchant',
             operatorId: deliveryId,
-            action: '配送完成已送达',
+            action: '配送完成已送达，订单完结',
           },
         },
       },
     });
 
-    // 订单完成后自动计算提成
     await this.calculateCommissions(orderId);
+    this.wsGateway.notifyOrderStatusChange(orderId, 'completed', '订单已完成，收益已结算');
 
     return updated;
   }
 
   async cancel(orderId: number, operatorId: number) {
     const order = await this.findOne(orderId);
-    if (order.status === 'delivered') throw new BadRequestException('已完成的订单无法取消');
+    if (order.status === 'delivered' || order.status === 'completed') throw new BadRequestException('已完成的订单无法取消');
 
     return this.prisma.order.update({
       where: { id: orderId },
@@ -258,7 +350,7 @@ export class OrderService {
       where: { id: orderId },
       include: { items: { include: { product: true } } },
     });
-    if (!order || order.status !== 'delivered') return;
+    if (!order || (order.status !== 'delivered' && order.status !== 'completed')) return;
 
     const commissionRules = await this.prisma.commissionRule.findMany();
     if (commissionRules.length === 0) return;

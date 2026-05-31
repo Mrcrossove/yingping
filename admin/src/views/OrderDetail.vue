@@ -47,10 +47,21 @@
           <el-button type="primary" @click="handleAccept">确认接单</el-button>
         </template>
         <template v-if="order.status === 'accepted'">
-          <el-select v-model="makerId" placeholder="选择制作员" style="width: 160px;">
-            <el-option v-for="m in makers" :key="m.id" :label="m.realName" :value="m.id" />
-          </el-select>
-          <el-button type="primary" :disabled="!makerId" @click="handleDispatchMaker">派单给制作员</el-button>
+          <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <el-select v-model="makerId" placeholder="选择制作员" style="width: 160px;">
+                <el-option v-for="m in makers" :key="m.id" :label="m.realName" :value="m.id" />
+              </el-select>
+              <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
+                <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
+              </el-select>
+              <el-button type="primary" :disabled="!makerId || !deliveryId" @click="handleDispatchBoth">同时派单</el-button>
+            </div>
+            <div style="font-size: 12px; color: #999;">或单独操作：</div>
+            <div style="display: flex; gap: 8px;">
+              <el-button size="small" :disabled="!makerId" @click="handleDispatchMaker">仅派制作员</el-button>
+            </div>
+          </div>
         </template>
         <template v-if="order.status === 'made'">
           <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
@@ -58,7 +69,7 @@
           </el-select>
           <el-button type="primary" :disabled="!deliveryId" @click="handleDispatchDelivery">派单给配送员</el-button>
         </template>
-        <el-button v-if="order.status !== 'delivered' && order.status !== 'cancelled'" type="danger" @click="handleCancel">取消订单</el-button>
+        <el-button v-if="order.status !== 'delivered' && order.status !== 'completed' && order.status !== 'cancelled'" type="danger" @click="handleCancel">取消订单</el-button>
       </div>
     </el-card>
   </div>
@@ -83,16 +94,16 @@ const deliverys = ref<any[]>([])
 
 const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
-  made: '已制作', delivering: '配送中', delivered: '已完成', cancelled: '已取消',
+  made: '已制作', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
 }
 
 function statusTagType(status: string) {
-  const map: Record<string, string> = { pending: 'warning', accepted: 'info', making: '', made: '', delivering: '', delivered: 'success', cancelled: 'danger' }
+  const map: Record<string, string> = { pending: 'warning', accepted: 'info', making: '', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
   return map[status] || ''
 }
 
 const canOperate = computed(() =>
-  ['boss', 'admin', 'salesperson'].includes(userStore.role) && order.value?.status !== 'delivered' && order.value?.status !== 'cancelled'
+  ['boss', 'admin', 'salesperson'].includes(userStore.role) && order.value?.status !== 'delivered' && order.value?.status !== 'completed' && order.value?.status !== 'cancelled'
 )
 
 async function fetchOrder() {
@@ -101,6 +112,7 @@ async function fetchOrder() {
     order.value = await orderApi.detail(+route.params.id)
     if (order.value.status === 'accepted') {
       makers.value = (await userApi.list({ role: 'maker', pageSize: 100 })).list
+      deliverys.value = (await userApi.list({ role: 'delivery', pageSize: 100 })).list
     }
     if (order.value.status === 'made') {
       deliverys.value = (await userApi.list({ role: 'delivery', pageSize: 100 })).list
@@ -120,6 +132,13 @@ async function handleDispatchMaker() {
   if (!makerId.value) return
   await orderApi.dispatchToMaker(order.value.id, makerId.value)
   ElMessage.success('已派单给制作员')
+  fetchOrder()
+}
+
+async function handleDispatchBoth() {
+  if (!makerId.value || !deliveryId.value) return
+  await orderApi.dispatchBoth(order.value.id, makerId.value, deliveryId.value)
+  ElMessage.success('已同时派单给制作员和配送员')
   fetchOrder()
 }
 

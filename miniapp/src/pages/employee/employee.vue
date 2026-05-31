@@ -31,7 +31,8 @@
           <text class="order-no">{{ o.orderNo }}</text>
           <text class="order-status">{{ statusMap[o.status] }}</text>
           <view class="order-actions">
-            <button v-if="o.status === 'making'" @click.stop="handleMakerComplete(o.id)" class="mini-btn">确认完成</button>
+            <button v-if="o.status === 'making'" @click.stop="handleMakerStart(o.id)" class="mini-btn">开始制作</button>
+            <button v-if="o.status === 'making'" @click.stop="handleMakerComplete(o.id)" class="mini-btn primary">确认完成</button>
           </view>
         </view>
       </view>
@@ -45,7 +46,8 @@
           <text class="order-no">{{ o.orderNo }}</text>
           <text class="order-status">{{ statusMap[o.status] }}</text>
           <view class="order-actions">
-            <button v-if="o.status === 'delivering'" @click.stop="handleDeliveryComplete(o.id)" class="mini-btn">确认送达</button>
+            <button v-if="o.status === 'made'" @click.stop="handleDeliveryStart(o.id)" class="mini-btn">去配送</button>
+            <button v-if="o.status === 'delivering'" @click.stop="handleDeliveryComplete(o.id)" class="mini-btn primary">确认送达</button>
           </view>
         </view>
       </view>
@@ -134,7 +136,9 @@ async function showDispatchDelivery(orderId: number) {
   })
 }
 
+async function handleMakerStart(id: number) { await orderApi.makerStart(id); fetchOrders() }
 async function handleMakerComplete(id: number) { await orderApi.makerComplete(id); fetchOrders() }
+async function handleDeliveryStart(id: number) { await orderApi.deliveryStart(id); fetchOrders() }
 async function handleDeliveryComplete(id: number) { await orderApi.deliveryComplete(id); fetchOrders() }
 
 function addManualItem() { manualForm.value.items.push({ productId: '', quantity: 1 }) }
