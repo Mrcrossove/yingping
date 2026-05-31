@@ -5,7 +5,7 @@
         <view class="checkbox" @click="cartStore.toggleCheck(item.productId)">
           <text :style="{ color: item.checked ? '#409EFF' : '#ccc', fontSize: '22px' }">{{ item.checked ? '✓' : '○' }}</text>
         </view>
-        <image :src="item.image || '/static/default.png'" class="cart-img" mode="aspectFill" />
+        <image :src="item.image || '/static/tab/home.png'" class="cart-img" mode="aspectFill" />
         <view class="cart-info">
           <text class="cart-name">{{ item.name }}</text>
           <text class="cart-price">¥{{ item.price }}</text>

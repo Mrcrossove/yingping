@@ -13,16 +13,16 @@ function request(options: UniApp.RequestOptions): Promise<any> {
       },
       success: (res: any) => {
         const { data } = res
-        if (data.code === 200) {
-          resolve(data.data)
-        } else {
-          uni.showToast({ title: data.message || '请求失败', icon: 'none' })
-          reject(data)
-        }
         if (data.code === 401) {
           uni.removeStorageSync('token')
           uni.removeStorageSync('user')
           uni.reLaunch({ url: '/pages/index/index' })
+          reject(data)
+        } else if (data.code === 200) {
+          resolve(data.data)
+        } else {
+          uni.showToast({ title: data.message || '请求失败', icon: 'none' })
+          reject(data)
         }
       },
       fail: (err) => {

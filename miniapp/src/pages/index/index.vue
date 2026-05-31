@@ -90,6 +90,7 @@ import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()
+const cartStore = useCartStore()
 const keyword = ref('')
 const currentCategory = ref(0)
 const cart = ref<Record<number, number>>({})
