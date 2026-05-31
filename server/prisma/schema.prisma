@@ -43,6 +43,7 @@ enum Role {
   delivery
   promoter
   merchant
+  other
 }
 
 model Permission {

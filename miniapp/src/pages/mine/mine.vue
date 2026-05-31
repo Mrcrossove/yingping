@@ -128,6 +128,7 @@ const menuGroups = computed(() => {
         { key: 'agent-record', icon: '📝', label: '代客录单记录' },
         { key: 'my-customers', icon: '👤', label: '我的客户', badge: `${user.customerCount}家` },
         { key: 'performance', icon: '📈', label: '业绩统计' },
+        { key: 'promotion', icon: '📢', label: '推广工具' },
         { key: 'employee', icon: '🔧', label: '员工工作台' },
       ],
     })
@@ -193,6 +194,7 @@ function handleMenu(item: any) {
     withdrawal: '/pages/employee/withdrawal',
     'promo-code': '/pages/promotion/promotion',
     'bind-promo': '/pages/promotion/promotion',
+    promotion: '/pages/promotion/promotion',
     notifications: '/pages/notifications/notifications',
     export: '#', staff: '#', permissions: '#', finance: '#',
     'agent-record': '#', 'my-customers': '#', performance: '#',
