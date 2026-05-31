@@ -39,6 +39,10 @@
     {
       "path": "pages/promotion/promotion",
       "style": { "navigationBarTitleText": "推广中心" }
+    },
+    {
+      "path": "pages/notifications/notifications",
+      "style": { "navigationBarTitleText": "消息通知" }
     }
   ],
   "globalStyle": {

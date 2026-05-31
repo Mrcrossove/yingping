@@ -41,7 +41,10 @@
               <el-button type="success" link @click="handleApprove(row.id)">通过</el-button>
               <el-button type="danger" link @click="showRejectDialog(row)">拒绝</el-button>
             </template>
-            <span v-else style="color: #909399;">已处理</span>
+            <template v-else-if="row.status === 'approved'">
+              <el-button type="success" link @click="handleMarkPaid(row.id)">标记已打款</el-button>
+            </template>
+            <span v-else style="color: #909399;">{{ statusMap[row.status] }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -77,7 +80,7 @@ const rejectDialogVisible = ref(false)
 const rejectRemark = ref('')
 const currentRejectId = ref(0)
 
-const statusMap: Record<string, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝' }
+const statusMap: Record<string, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝', paid: '已打款' }
 const roleMap: Record<string, string> = { salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员' }
 function statusType(s: string) { const m: Record<string, string> = { pending: 'warning', approved: 'success', rejected: 'danger' }; return m[s] || '' }
 
@@ -99,6 +102,8 @@ async function handleReject() {
   await withdrawalApi.reject(currentRejectId.value, rejectRemark.value)
   ElMessage.success('已拒绝'); rejectDialogVisible.value = false; fetchList()
 }
+
+async function handleMarkPaid(id: number) { await withdrawalApi.markPaid(id); ElMessage.success('已标记为已打款'); fetchList() }
 
 function handleExport() { window.open(exportApi.withdrawals(), '_blank') }
 

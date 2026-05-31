@@ -64,4 +64,28 @@ export class DashboardService {
     }
     return results;
   }
+
+  async getEarningsSummary() {
+    const earnings = await this.prisma.earning.groupBy({
+      by: ['role'],
+      _sum: { amount: true },
+      orderBy: { _sum: { amount: 'desc' } },
+    });
+
+    const totalPaid = await this.prisma.withdrawal.aggregate({
+      where: { status: { in: ['approved', 'paid'] } },
+      _sum: { amount: true },
+    });
+
+    const totalPending = await this.prisma.withdrawal.aggregate({
+      where: { status: 'pending' },
+      _sum: { amount: true },
+    });
+
+    return {
+      byRole: earnings.map(e => ({ role: e.role, total: Number(e._sum.amount || 0) })),
+      totalPaid: Number(totalPaid._sum.amount || 0),
+      totalPending: Number(totalPending._sum.amount || 0),
+    };
+  }
 }

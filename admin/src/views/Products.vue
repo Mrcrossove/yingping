@@ -48,6 +48,12 @@
         <el-form-item label="单价">
           <el-input-number v-model="productForm.price" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="制作提成(元)">
+          <el-input-number v-model="productForm.makerRate" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="配送提成(元)">
+          <el-input-number v-model="productForm.deliveryRate" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
         <el-form-item label="单位">
           <el-input v-model="productForm.unit" placeholder="如：杯、瓶" />
         </el-form-item>

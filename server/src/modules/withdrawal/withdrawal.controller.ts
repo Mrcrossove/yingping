@@ -39,6 +39,15 @@ export class WithdrawalController {
     return ApiResult.success(data, '审核通过');
   }
 
+
+  @Post(':id/mark-paid')
+  @UseGuards(RolesGuard)
+  @Roles('boss', 'admin')
+  async markPaid(@Param('id') id: string) {
+    const data = await this.withdrawalService.markPaid(+id);
+    return ApiResult.success(data, '已标记为已打款');
+  }
+
   @Post(':id/reject')
   @UseGuards(RolesGuard)
   @Roles('boss', 'admin')

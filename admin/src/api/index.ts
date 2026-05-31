@@ -31,6 +31,7 @@ export const withdrawalApi = {
   allWithdrawals: (params?: any) => request.get('/withdrawals', { params }),
   approve: (id: number) => request.post(`/withdrawals/${id}/approve`),
   reject: (id: number, remark: string) => request.post(`/withdrawals/${id}/reject`, { remark }),
+  markPaid: (id: number) => request.post(`/withdrawals/${id}/mark-paid`),
 }
 
 export const promotionApi = {

@@ -22,4 +22,10 @@ export class DashboardController {
     const data = await this.dashboardService.getOrderTrend(+days || 7);
     return ApiResult.success(data);
   }
+
+  @Get('earnings-summary')
+  async getEarningsSummary() {
+    const data = await this.dashboardService.getEarningsSummary();
+    return ApiResult.success(data);
+  }
 }

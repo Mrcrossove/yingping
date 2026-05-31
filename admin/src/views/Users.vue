@@ -30,10 +30,11 @@
         <el-table-column prop="createdAt" label="创建时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="showUserDialog(row)">编辑</el-button>
             <el-button v-if="row.role === 'admin'" type="warning" link @click="showPermissionDialog(row)">权限</el-button>
+            <el-button type="success" link @click="showResetPwd(row)">重置密码</el-button>
             <el-button type="danger" link @click="handleDelete(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
           </template>
         </el-table-column>
@@ -87,6 +88,18 @@
         <el-button type="primary" @click="handleSavePermission">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="resetPwdVisible" title="重置密码" width="400px">
+      <el-form>
+        <el-form-item label="新密码">
+          <el-input v-model="resetPwdForm.password" show-password placeholder="输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetPwdVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleResetPwd">确认重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -108,6 +121,8 @@ const permissionDialogVisible = ref(false)
 const currentAdminId = ref(0)
 const allPermissions = ref<any[]>([])
 const adminPermissionIds = ref<number[]>([])
+const resetPwdVisible = ref(false)
+const resetPwdForm = ref({ userId: 0, password: '' })
 
 const roleMap: Record<string, string> = {
   boss: '老板', admin: '管理员', salesperson: '业务员',
@@ -170,6 +185,18 @@ async function handleSavePermission() {
   await permissionApi.setAdminPermissions(currentAdminId.value, adminPermissionIds.value)
   ElMessage.success('权限设置保存成功')
   permissionDialogVisible.value = false
+}
+
+function showResetPwd(row: any) {
+  resetPwdForm.value = { userId: row.id, password: '' }
+  resetPwdVisible.value = true
+}
+
+async function handleResetPwd() {
+  if (!resetPwdForm.value.password) { ElMessage.warning('请输入新密码'); return }
+  await userApi.update(resetPwdForm.value.userId, { password: resetPwdForm.value.password })
+  ElMessage.success('密码重置成功')
+  resetPwdVisible.value = false
 }
 
 watch([keyword, filterRole], () => { page.value = 1; fetchUsers() })

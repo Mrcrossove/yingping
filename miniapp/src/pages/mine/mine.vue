@@ -164,7 +164,9 @@ const menuGroups = computed(() => {
     groups.push({
       title: '账户管理',
       items: [
-        { key: 'address', icon: '📍', label: '收货地址管理' },
+        { key: 'notifications', icon: '🔔', label: '消息通知', badge: '3' },
+
+      { key: 'address', icon: '📍', label: '收货地址管理' },
         { key: 'invoice', icon: '🧾', label: '开票信息' },
         { key: 'bind-promo', icon: '🔗', label: '绑定推广码' },
       ],
@@ -191,10 +193,11 @@ function handleMenu(item: any) {
     withdrawal: '/pages/employee/withdrawal',
     'promo-code': '/pages/promotion/promotion',
     'bind-promo': '/pages/promotion/promotion',
+    notifications: '/pages/notifications/notifications',
     export: '#', staff: '#', permissions: '#', finance: '#',
     'agent-record': '#', 'my-customers': '#', performance: '#',
     history: '#', 'bound-merchants': '#', commission: '#',
-    address: '#', invoice: '#', notifications: '#', security: '#', about: '#',
+      address: '#', invoice: '#', security: '#', about: '#',
   }
   const url = routeMap[item.key]
   if (url && url !== '#') uni.navigateTo({ url })

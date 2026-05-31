@@ -86,4 +86,15 @@ export class WithdrawalService {
   async findMyWithdrawals(userId: number, query: { page?: number; pageSize?: number }) {
     return this.findAll({ ...query, userId });
   }
+  async markPaid(id: number) {
+    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id } });
+    if (!withdrawal) throw new BadRequestException('申请不存在');
+    if (withdrawal.status !== 'approved') throw new BadRequestException('只能标记已通过的申请为已打款');
+
+    return this.prisma.withdrawal.update({
+      where: { id },
+      data: { status: 'paid', processedAt: new Date() },
+    });
+  }
+
 }

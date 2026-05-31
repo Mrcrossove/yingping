@@ -38,6 +38,14 @@ export class UserController {
     return ApiResult.success(data, '更新成功');
   }
 
+
+  @Post(':id/reset-password')
+  @Roles('boss', 'admin')
+  async resetPassword(@Param('id') id: string, @Body('password') password: string) {
+    const data = await this.userService.resetPassword(+id, password);
+    return ApiResult.success(data, '密码重置成功');
+  }
+
   @Delete(':id')
   @Roles('boss', 'admin')
   async remove(@Param('id') id: string) {

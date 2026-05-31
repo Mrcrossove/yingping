@@ -42,10 +42,10 @@ request.interceptors.response.use(
 )
 
 const http = {
-  get: <T = any>(url: string, params?: any): Promise<T> => request.get(url, { params }),
+  get: <T = any>(url: string, config?: any): Promise<T> => request.get(url, config),
   post: <T = any>(url: string, data?: any, config?: any): Promise<T> => request.post(url, data, config),
-  put: <T = any>(url: string, data?: any): Promise<T> => request.put(url, data),
-  delete: <T = any>(url: string): Promise<T> => request.delete(url),
+  put: <T = any>(url: string, data?: any, config?: any): Promise<T> => request.put(url, data, config),
+  delete: <T = any>(url: string, config?: any): Promise<T> => request.delete(url, config),
 }
 
 export default http

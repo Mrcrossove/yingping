@@ -14,6 +14,7 @@ import { ExportModule } from './modules/export/export.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FileModule } from './modules/file/file.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
     DashboardModule,
     FileModule,
     WebsocketModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

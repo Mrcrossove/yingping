@@ -37,6 +37,7 @@ export class PermissionService {
       { name: '提现审核', code: 'withdrawal:manage', description: '审核提现申请' },
       { name: '数据导出', code: 'export:manage', description: '导出Excel报表' },
       { name: '推广管理', code: 'promotion:manage', description: '管理推广码和绑定' },
+      { name: '查看财务数据', code: 'finance:view', description: '查看财务收益报表' },
     ];
     for (const p of defaults) {
       await this.prisma.permission.upsert({

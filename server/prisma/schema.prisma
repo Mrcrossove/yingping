@@ -30,6 +30,7 @@ model User {
   promotionCodes      PromotionCode[]
   merchantBindings    MerchantBinding[]  @relation("MbMerchant")
   promoterBindings    MerchantBinding[]  @relation("MbPromoter")
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -103,6 +104,8 @@ model Product {
   unit        String?  @default("杯") @db.VarChar(10)
   description String?  @db.Text
   status      Int      @default(1) @db.TinyInt
+  makerRate   Decimal? @db.Decimal(10, 2) @map("maker_rate")
+  deliveryRate Decimal? @db.Decimal(10, 2) @map("delivery_rate")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -237,6 +240,7 @@ enum WithdrawalStatus {
   pending
   approved
   rejected
+  paid
 }
 
 model PromotionCode {
@@ -261,4 +265,18 @@ model MerchantBinding {
   promoter User @relation("MbPromoter", fields: [promoterId], references: [id])
 
   @@map("merchant_bindings")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  content   String?  @db.Text
+  type      String   @default("system") @db.VarChar(30)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
 }

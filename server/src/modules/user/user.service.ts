@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 
@@ -79,4 +79,14 @@ export class UserService {
     await this.prisma.user.update({ where: { id }, data: { status: 0 } });
     return { id };
   }
+  async resetPassword(id: number, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('用户不存在');
+    return this.prisma.user.update({
+      where: { id },
+      data: { password: await bcrypt.hash(newPassword, 10) },
+      select: { id: true, username: true, realName: true },
+    });
+  }
+
 }
