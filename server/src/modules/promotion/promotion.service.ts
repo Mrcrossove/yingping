@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import axios from 'axios';
 
 @Injectable()
 export class PromotionService {
@@ -80,5 +81,81 @@ export class PromotionService {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
+  }
+
+  async getWxacode(promoterId: number) {
+    const code = await this.prisma.promotionCode.findFirst({ where: { promoterId } });
+    if (!code) throw new BadRequestException('请先生成推广码');
+
+    const appId = process.env.WX_APPID;
+    const secret = process.env.WX_SECRET;
+    if (!appId || !secret) {
+      return { code: code.code, qrcode: null, message: '请配置微信 AppID 和 Secret' };
+    }
+
+    try {
+      const tokenRes = await axios.get('https://api.weixin.qq.com/cgi-bin/token', {
+        params: { grant_type: 'client_credential', appid: appId, secret },
+      });
+      const accessToken = tokenRes.data.access_token;
+
+      const qrRes = await axios.post(
+        `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`,
+        { scene: code.code, page: 'pages/index/index', width: 280 },
+        { responseType: 'arraybuffer' },
+      );
+      const base64 = Buffer.from(qrRes.data).toString('base64');
+      return { code: code.code, qrcode: `data:image/png;base64,${base64}` };
+    } catch {
+      return { code: code.code, qrcode: null, message: '二维码生成失败，已显示文本码' };
+    }
+  }
+
+  async getCommissionDetails(promoterId: number, query: { page?: number; pageSize?: number }) {
+    const { page = 1, pageSize = 20 } = query;
+
+    const bindings = await this.prisma.merchantBinding.findMany({
+      where: { promoterId },
+      include: { merchant: { select: { id: true, realName: true } } },
+    });
+    const merchantIds = bindings.map((b) => b.merchantId);
+
+    const earnings = await this.prisma.earning.findMany({
+      where: { userId: promoterId, role: 'promoter' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: { select: { merchant: { select: { realName: true } } } },
+      },
+    });
+
+    const total = await this.prisma.earning.count({
+      where: { userId: promoterId, role: 'promoter' },
+    });
+
+    const totalCommission = await this.prisma.earning.aggregate({
+      where: { userId: promoterId, role: 'promoter' },
+      _sum: { amount: true },
+    });
+
+    return {
+      list: earnings.map((e) => ({
+        id: e.id,
+        orderNo: e.orderNo,
+        merchantName: (e.order as any)?.merchant?.realName || '-',
+        amount: Number(e.amount),
+        status: e.status,
+        createdAt: e.createdAt,
+      })),
+      total,
+      totalCommission: Number(totalCommission._sum.amount || 0),
+      page,
+      pageSize,
+    };
+  }
+
+  async uploadMerchant(data: { promoterId: number; name: string; phone: string; address?: string }) {
+    return data;
   }
 }

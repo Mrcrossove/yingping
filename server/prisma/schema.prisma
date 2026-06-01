@@ -32,6 +32,8 @@ model User {
   merchantBindings    MerchantBinding[]  @relation("MbMerchant")
   promoterBindings    MerchantBinding[]  @relation("MbPromoter")
   notifications      Notification[]
+  addresses           Address[]
+  reviews             Review[]
 
   @@map("users")
 }
@@ -137,6 +139,8 @@ model Order {
   items       OrderItem[]
   flows       OrderFlow[]
   earnings    Earning[]
+  payment     Payment?
+  reviews     Review[]
 
   @@map("orders")
 }
@@ -296,4 +300,61 @@ model AuditLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("audit_logs")
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  orderId       Int      @unique @map("order_id")
+  orderNo       String   @map("order_no") @db.VarChar(32)
+  userId        Int      @map("user_id")
+  amount        Decimal  @db.Decimal(10, 2)
+  prepayId      String?  @unique @map("prepay_id") @db.VarChar(64)
+  transactionId String?  @unique @map("transaction_id") @db.VarChar(64)
+  status        PaymentStatus @default(pending)
+  createdAt     DateTime @default(now()) @map("created_at")
+  paidAt        DateTime? @map("paid_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  refunding
+  refunded
+  failed
+}
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String   @db.VarChar(30)
+  phone     String   @db.VarChar(20)
+  province  String?  @db.VarChar(20)
+  city      String?  @db.VarChar(20)
+  district  String?  @db.VarChar(20)
+  detail    String   @db.VarChar(200)
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("addresses")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  orderId   Int      @map("order_id")
+  userId    Int      @map("user_id")
+  rating    Int      @default(5) @db.TinyInt
+  content   String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([orderId, userId])
+  @@map("reviews")
 }

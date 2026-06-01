@@ -49,4 +49,28 @@ export class PromotionController {
     const data = await this.promotionService.findAllCodes(query);
     return ApiResult.success(data);
   }
+
+  @Get('wxacode')
+  @UseGuards(JwtAuthGuard)
+  @Roles('promoter')
+  async getWxacode(@Request() req) {
+    const data = await this.promotionService.getWxacode(req.user.id);
+    return ApiResult.success(data);
+  }
+
+  @Get('commission-details')
+  @UseGuards(JwtAuthGuard)
+  @Roles('promoter')
+  async getCommissionDetails(@Request() req, @Query() query: any) {
+    const data = await this.promotionService.getCommissionDetails(req.user.id, query);
+    return ApiResult.success(data);
+  }
+
+  @Post('upload-merchant')
+  @UseGuards(JwtAuthGuard)
+  @Roles('promoter')
+  async uploadMerchant(@Body() body: any, @Request() req) {
+    const data = await this.promotionService.uploadMerchant({ ...body, promoterId: req.user.id });
+    return ApiResult.success(data, '上传成功');
+  }
 }

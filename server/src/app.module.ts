@@ -18,6 +18,9 @@ import { FileModule } from './modules/file/file.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { AddressModule } from './modules/address/address.module';
+import { ReviewModule } from './modules/review/review.module';
 
 @Module({
   imports: [
@@ -39,6 +42,9 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
     WebsocketModule,
     NotificationModule,
     AuditLogModule,
+    PaymentModule,
+    AddressModule,
+    ReviewModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

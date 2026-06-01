@@ -235,10 +235,11 @@ function handleMenu(item: any) {
     'bind-promo': '/pages/promotion/promotion',
     promotion: '/pages/promotion/promotion',
     notifications: '/pages/notifications/notifications',
+    address: '/pages/address/address',
     export: '#', staff: '#', permissions: '#', finance: '#',
     'agent-record': '#', 'my-customers': '#', performance: '#',
     history: '#', 'bound-merchants': '#', commission: '#',
-      address: '#', invoice: '#', security: '#', about: '#',
+      invoice: '#', security: '#', about: '#',
   }
   const url = routeMap[item.key]
   if (url && url !== '#') uni.navigateTo({ url })

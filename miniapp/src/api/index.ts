@@ -44,4 +44,6 @@ export const promotionApi = {
   generateCode: () => post('/promotion/generate-code'),
   myCode: () => get('/promotion/my-code'),
   bindMerchant: (code: string) => post('/promotion/bind', { code }),
+  wxacode: () => get('/promotion/wxacode'),
+  commissionDetails: (params?: any) => get('/promotion/commission-details', params),
 }

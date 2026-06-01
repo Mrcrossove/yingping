@@ -11,8 +11,9 @@
       <view v-if="myCode" class="promo-card">
         <text class="promo-label">我的推广码</text>
         <text class="promo-code">{{ myCode.code }}</text>
-        <view class="qr-box">
-          <text class="qr-placeholder">[ 二维码 ]</text>
+        <image v-if="qrImage" :src="qrImage" class="qr-image" mode="aspectFit" />
+        <view v-else class="qr-box">
+          <text class="qr-placeholder">加载中...</text>
         </view>
         <text class="promo-tip">让商户扫码或在注册时输入此推广码即可绑定</text>
       </view>
@@ -58,6 +59,8 @@ import { promotionApi } from '@/api/index'
 
 const currentTab = ref('code')
 const myCode = ref<any>(null)
+const qrImage = ref('')
+const commissionItems = ref<any[]>([])
 const merchantForm = reactive({ name: '', phone: '', address: '' })
 
 const tabs = [
@@ -72,7 +75,11 @@ const commissionRecords = ref([
 ])
 
 async function fetchCode() {
-  try { myCode.value = await promotionApi.myCode() } catch { myCode.value = null }
+  try {
+    myCode.value = await promotionApi.myCode()
+    const qrData = await promotionApi.wxacode()
+    if (qrData?.qrcode) qrImage.value = qrData.qrcode
+  } catch { myCode.value = null }
 }
 
 async function handleGenerate() {
