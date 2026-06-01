@@ -8,7 +8,10 @@ import { AuditLogInterceptor } from './common/audit-log.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors();
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
+  app.enableCors({
+    origin: corsOrigins?.length ? corsOrigins : true,
+  });
   app.setGlobalPrefix('api');
 
   // Swagger
@@ -19,7 +22,9 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  if (process.env.ENABLE_SWAGGER !== 'false') {
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Validation
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));

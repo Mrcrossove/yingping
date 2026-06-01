@@ -6,7 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('orders')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class OrderController {
   constructor(private orderService: OrderService) {}
 
@@ -28,8 +28,8 @@ export class OrderController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const data = await this.orderService.findOne(+id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    const data = await this.orderService.findOneForUser(+id, req.user);
     return ApiResult.success(data);
   }
 

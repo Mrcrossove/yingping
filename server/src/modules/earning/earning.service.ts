@@ -24,18 +24,22 @@ export class EarningService {
       _sum: { amount: true },
     });
 
-    const withdrawnAmount = await this.prisma.withdrawal.aggregate({
-      where: { userId, status: 'approved' },
+    const occupiedAmount = await this.prisma.withdrawal.aggregate({
+      where: { userId, status: { in: ['pending', 'approved', 'paid'] } },
       _sum: { amount: true },
     });
+
+    const pendingAmount = Number(totalAmount._sum.amount || 0);
+    const withdrawnAmount = Number(occupiedAmount._sum.amount || 0);
 
     return {
       list,
       total,
       page,
       pageSize,
-      pendingAmount: totalAmount._sum.amount || 0,
-      withdrawnAmount: withdrawnAmount._sum.amount || 0,
+      pendingAmount,
+      withdrawnAmount,
+      availableAmount: Math.max(0, pendingAmount - withdrawnAmount),
     };
   }
 

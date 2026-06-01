@@ -1,31 +1,24 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class WithdrawalService {
   constructor(private prisma: PrismaService) {}
 
   async apply(userId: number, dto: { amount: number; accountType: string; accountInfo: string }) {
-    const pending = await this.prisma.earning.aggregate({
-      where: { userId, status: 'pending_settle' },
-      _sum: { amount: true },
-    });
-    const pendingAmount = Number(pending._sum.amount || 0);
+    const amount = new Prisma.Decimal(dto.amount || 0);
+    if (amount.lessThanOrEqualTo(0)) throw new BadRequestException('提现金额必须大于 0');
+    if (!dto.accountType || !dto.accountInfo) throw new BadRequestException('提现账户信息不完整');
 
-    const approvedWithdrawals = await this.prisma.withdrawal.aggregate({
-      where: { userId, status: 'approved' },
-      _sum: { amount: true },
-    });
-    const withdrawnAmount = Number(approvedWithdrawals._sum.amount || 0);
-
-    const available = pendingAmount - withdrawnAmount;
+    const available = await this.getAvailableAmount(userId);
     if (available <= 0) throw new BadRequestException('没有可提现金额');
-    if (dto.amount > available) throw new BadRequestException(`可提现金额为 ${available}`);
+    if (amount.greaterThan(available)) throw new BadRequestException(`可提现金额为 ${available}`);
 
     return this.prisma.withdrawal.create({
       data: {
         userId,
-        amount: dto.amount,
+        amount,
         accountType: dto.accountType,
         accountInfo: dto.accountInfo,
         status: 'pending',
@@ -64,18 +57,13 @@ export class WithdrawalService {
       data: { status: 'approved', processedAt: new Date() },
     });
 
-    // 将对应的收益状态改为已提现
-    await this.prisma.earning.updateMany({
-      where: { userId: withdrawal.userId, status: 'pending_settle' },
-      data: { status: 'withdrawn' },
-    });
-
     return result;
   }
 
   async reject(id: number, remark: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id } });
     if (!withdrawal) throw new BadRequestException('申请不存在');
+    if (withdrawal.status !== 'pending') throw new BadRequestException('只能拒绝待审核申请');
 
     return this.prisma.withdrawal.update({
       where: { id },
@@ -98,9 +86,25 @@ export class WithdrawalService {
   }
 
   async batchApprove(ids: number[]) {
+    if (!Array.isArray(ids) || ids.length === 0) throw new BadRequestException('请选择提现申请');
     return this.prisma.withdrawal.updateMany({
       where: { id: { in: ids }, status: 'pending' },
       data: { status: 'approved', processedAt: new Date() },
     });
+  }
+
+  private async getAvailableAmount(userId: number) {
+    const earnings = await this.prisma.earning.aggregate({
+      where: { userId, status: 'pending_settle' },
+      _sum: { amount: true },
+    });
+    const withdrawals = await this.prisma.withdrawal.aggregate({
+      where: { userId, status: { in: ['pending', 'approved', 'paid'] } },
+      _sum: { amount: true },
+    });
+
+    const earningAmount = Number(earnings._sum.amount || 0);
+    const occupiedAmount = Number(withdrawals._sum.amount || 0);
+    return Math.max(0, earningAmount - occupiedAmount);
   }
 }

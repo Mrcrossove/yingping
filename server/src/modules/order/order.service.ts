@@ -13,21 +13,26 @@ export class OrderService {
   ) {}
 
   async create(dto: { items: { productId: number; quantity: number }[]; note?: string }, merchantId: number) {
+    if (!dto.items?.length) throw new BadRequestException('订单商品不能为空');
     const orderNo = this.generateOrderNo();
 
     let totalAmount = new Prisma.Decimal(0);
     const items: { productId: number; quantity: number; price: any }[] = [];
     for (const item of dto.items) {
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new BadRequestException(`商品 ${item.productId} 数量不正确`);
+      }
       const product = await this.prisma.product.findUnique({ where: { id: item.productId } });
       if (!product || product.status === 0) {
         throw new BadRequestException(`商品 ${item.productId} 不存在或已下架`);
       }
       items.push({
         productId: item.productId,
-        quantity: item.quantity,
+        quantity,
         price: product.price,
       });
-      totalAmount = totalAmount.add(product.price.mul(item.quantity));
+      totalAmount = totalAmount.add(product.price.mul(quantity));
     }
 
     const order = await this.prisma.order.create({
@@ -116,6 +121,14 @@ export class OrderService {
     return order;
   }
 
+  async findOneForUser(id: number, user: { id: number; role: Role }) {
+    const order = await this.findOne(id);
+    if (!this.canAccessOrder(order, user)) {
+      throw new ForbiddenException('无权访问该订单');
+    }
+    return order;
+  }
+
   async acceptOrder(orderId: number, salespersonId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'pending') throw new BadRequestException('订单状态不正确');
@@ -200,6 +213,7 @@ export class OrderService {
   async makerStartMaking(orderId: number, makerId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
+    if (order.makerId !== makerId) throw new ForbiddenException('无权操作该制作任务');
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -223,6 +237,7 @@ export class OrderService {
   async makerComplete(orderId: number, makerId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
+    if (order.makerId !== makerId) throw new ForbiddenException('无权操作该制作任务');
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -247,6 +262,7 @@ export class OrderService {
   async deliveryStartDelivering(orderId: number, deliveryId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'made') throw new BadRequestException('订单状态不正确，请等待制作完成');
+    if (order.deliveryId !== deliveryId) throw new ForbiddenException('无权操作该配送任务');
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -293,20 +309,39 @@ export class OrderService {
   async deliveryComplete(orderId: number, deliveryId: number) {
     const order = await this.findOne(orderId);
     if (order.status !== 'delivering') throw new BadRequestException('订单状态不正确');
+    if (order.deliveryId !== deliveryId) throw new ForbiddenException('无权操作该配送任务');
 
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'completed',
-        flows: {
-          create: {
-            fromRole: 'delivery',
-            toRole: 'merchant',
-            operatorId: deliveryId,
-            action: '配送完成已送达，订单完结',
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, status: 'delivering', deliveryId },
+        data: { status: 'completed' },
+      });
+      if (changed.count !== 1) throw new BadRequestException('订单状态已变更，请刷新后重试');
+
+      await tx.orderFlow.create({
+        data: {
+          orderId,
+          fromRole: 'delivery',
+          toRole: 'merchant',
+          operatorId: deliveryId,
+          action: '配送完成已送达，订单完结',
+        },
+      });
+
+      return tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { product: true } },
+          merchant: { select: { id: true, realName: true, phone: true } },
+          salesperson: { select: { id: true, realName: true, phone: true } },
+          maker: { select: { id: true, realName: true, phone: true } },
+          delivery: { select: { id: true, realName: true, phone: true } },
+          flows: {
+            include: { operator: { select: { id: true, realName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
           },
         },
-      },
+      });
     });
 
     await this.calculateCommissions(orderId);
@@ -377,6 +412,11 @@ export class OrderService {
     });
     if (!order || (order.status !== 'delivered' && order.status !== 'completed')) return;
 
+    const existing = await this.prisma.earning.count({
+      where: { orderId, type: 'commission' },
+    });
+    if (existing > 0) return;
+
     const commissionRules = await this.prisma.commissionRule.findMany();
     if (commissionRules.length === 0) return;
 
@@ -418,5 +458,14 @@ export class OrderService {
     const date = now.toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `BO${date}${random}`;
+  }
+
+  private canAccessOrder(order: any, user: { id: number; role: Role }) {
+    if (user.role === 'boss' || user.role === 'admin') return true;
+    if (user.role === 'merchant') return order.merchantId === user.id;
+    if (user.role === 'salesperson') return order.salespersonId === user.id;
+    if (user.role === 'maker') return order.makerId === user.id;
+    if (user.role === 'delivery') return order.deliveryId === user.id;
+    return false;
   }
 }

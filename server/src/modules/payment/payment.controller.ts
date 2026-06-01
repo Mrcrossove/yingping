@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards, Request, Headers } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
@@ -12,27 +12,31 @@ export class PaymentController {
   @Post('create/:orderId')
   @UseGuards(JwtAuthGuard)
   async create(@Param('orderId') orderId: string, @Request() req) {
-    const data = await this.paymentService.createPayment(+orderId, req.user.id);
+    const data = await this.paymentService.createPayment(+orderId, req.user);
     return ApiResult.success(data, '支付单已创建');
   }
 
   @Post('jsapi/:orderId')
   @UseGuards(JwtAuthGuard)
-  async jsapiPay(@Param('orderId') orderId: string, @Body('openid') openid: string) {
-    const data = await this.paymentService.jsapiPay(+orderId, openid);
+  async jsapiPay(@Param('orderId') orderId: string, @Body('openid') openid: string, @Request() req) {
+    const data = await this.paymentService.jsapiPay(+orderId, openid, req.user);
     return ApiResult.success(data);
   }
 
   @Post('notify')
-  async payNotify(@Body('orderNo') orderNo: string, @Body('transactionId') transactionId: string) {
-    const data = await this.paymentService.handlePayNotify(orderNo, transactionId);
+  async payNotify(
+    @Body('orderNo') orderNo: string,
+    @Body('transactionId') transactionId: string,
+    @Headers('x-payment-signature') signature: string,
+  ) {
+    const data = await this.paymentService.handlePayNotify(orderNo, transactionId, signature);
     return ApiResult.success(data);
   }
 
   @Get('order/:orderId')
   @UseGuards(JwtAuthGuard)
-  async getByOrder(@Param('orderId') orderId: string) {
-    const data = await this.paymentService.getPaymentByOrder(+orderId);
+  async getByOrder(@Param('orderId') orderId: string, @Request() req) {
+    const data = await this.paymentService.getPaymentByOrder(+orderId, req.user);
     return ApiResult.success(data);
   }
 

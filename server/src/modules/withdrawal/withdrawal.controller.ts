@@ -6,7 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('withdrawals')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class WithdrawalController {
   constructor(private withdrawalService: WithdrawalService) {}
 
@@ -24,7 +24,6 @@ export class WithdrawalController {
   }
 
   @Get()
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async findAll(@Query() query: any) {
     const data = await this.withdrawalService.findAll(query);
@@ -32,7 +31,6 @@ export class WithdrawalController {
   }
 
   @Post(':id/approve')
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async approve(@Param('id') id: string) {
     const data = await this.withdrawalService.approve(+id);
@@ -41,7 +39,6 @@ export class WithdrawalController {
 
 
   @Post(':id/mark-paid')
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async markPaid(@Param('id') id: string) {
     const data = await this.withdrawalService.markPaid(+id);
@@ -49,7 +46,6 @@ export class WithdrawalController {
   }
 
   @Post(':id/reject')
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async reject(@Param('id') id: string, @Body('remark') remark: string) {
     const data = await this.withdrawalService.reject(+id, remark);
@@ -57,7 +53,6 @@ export class WithdrawalController {
   }
 
   @Post('batch-approve')
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async batchApprove(@Body('ids') ids: number[]) {
     const data = await this.withdrawalService.batchApprove(ids);

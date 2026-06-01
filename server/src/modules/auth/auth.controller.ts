@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common'
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ApiResult } from '../../common/api-result';
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 
 class LoginDto {
   @IsString() @IsNotEmpty() username: string;
@@ -13,7 +13,7 @@ class RegisterDto {
   @IsString() @IsNotEmpty() username: string;
   @IsString() @IsNotEmpty() password: string;
   @IsString() @IsNotEmpty() realName: string;
-  @IsString() @IsNotEmpty() role: string;
+  @IsOptional() @IsIn(['merchant']) role?: string;
   @IsOptional() @IsString() phone?: string;
 }
 

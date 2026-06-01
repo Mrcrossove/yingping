@@ -6,11 +6,11 @@ import { RolesGuard } from '../../common/roles.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('promotion')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PromotionController {
   constructor(private promotionService: PromotionService) {}
 
   @Post('generate-code')
-  @UseGuards(JwtAuthGuard)
   @Roles('promoter')
   async generateCode(@Request() req) {
     const data = await this.promotionService.generateCode(req.user.id);
@@ -18,7 +18,6 @@ export class PromotionController {
   }
 
   @Get('my-code')
-  @UseGuards(JwtAuthGuard)
   @Roles('promoter')
   async findMyCode(@Request() req) {
     const data = await this.promotionService.findMyCode(req.user.id);
@@ -26,14 +25,13 @@ export class PromotionController {
   }
 
   @Post('bind')
-  @UseGuards(JwtAuthGuard)
+  @Roles('merchant')
   async bindMerchant(@Body('code') code: string, @Request() req) {
     const data = await this.promotionService.bindMerchant(req.user.id, code);
     return ApiResult.success(data, '绑定成功');
   }
 
   @Get('bindings')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('boss', 'admin', 'promoter')
   async findAllBindings(@Query() query: any, @Request() req) {
     if (req.user.role === 'promoter') query.promoterId = req.user.id;
@@ -42,7 +40,6 @@ export class PromotionController {
   }
 
   @Get('codes')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('boss', 'admin', 'promoter')
   async findAllCodes(@Query() query: any, @Request() req) {
     if (req.user.role === 'promoter') query.promoterId = req.user.id;
@@ -51,7 +48,6 @@ export class PromotionController {
   }
 
   @Get('wxacode')
-  @UseGuards(JwtAuthGuard)
   @Roles('promoter')
   async getWxacode(@Request() req) {
     const data = await this.promotionService.getWxacode(req.user.id);
@@ -59,7 +55,6 @@ export class PromotionController {
   }
 
   @Get('commission-details')
-  @UseGuards(JwtAuthGuard)
   @Roles('promoter')
   async getCommissionDetails(@Request() req, @Query() query: any) {
     const data = await this.promotionService.getCommissionDetails(req.user.id, query);
@@ -67,7 +62,6 @@ export class PromotionController {
   }
 
   @Post('upload-merchant')
-  @UseGuards(JwtAuthGuard)
   @Roles('promoter')
   async uploadMerchant(@Body() body: any, @Request() req) {
     const data = await this.promotionService.uploadMerchant({ ...body, promoterId: req.user.id });

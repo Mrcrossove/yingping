@@ -6,7 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('earnings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class EarningController {
   constructor(private earningService: EarningService) {}
 
@@ -17,7 +17,6 @@ export class EarningController {
   }
 
   @Get()
-  @UseGuards(RolesGuard)
   @Roles('boss', 'admin')
   async findAll(@Query() query: any) {
     const data = await this.earningService.findAll(query);

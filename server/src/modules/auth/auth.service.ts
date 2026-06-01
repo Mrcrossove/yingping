@@ -15,6 +15,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { username } });
     if (!user) throw new UnauthorizedException('账号或密码错误');
     if (user.status === 0) throw new UnauthorizedException('账号已被禁用');
+    if (user.status === 2) throw new UnauthorizedException('账号待审核');
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('账号或密码错误');
@@ -55,6 +56,7 @@ export class AuthService {
       });
     }
     if (user.status === 0) throw new UnauthorizedException('账号已被禁用');
+    if (user.status === 2) throw new UnauthorizedException('账号待审核');
 
     const { password: _, ...userInfo } = user;
     const token = this.signToken(user);
@@ -62,7 +64,7 @@ export class AuthService {
   }
 
   async register(data: {
-    username: string; password: string; realName: string; role: string; phone?: string;
+    username: string; password: string; realName: string; role?: string; phone?: string;
   }) {
     const exists = await this.prisma.user.findUnique({ where: { username: data.username } });
     if (exists) throw new UnauthorizedException('账号已存在');
@@ -71,8 +73,8 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         username: data.username, password: hashed,
-        realName: data.realName, role: data.role as any, phone: data.phone,
-        status: data.role === 'merchant' ? 2 : 1,
+        realName: data.realName, role: 'merchant', phone: data.phone,
+        status: 2,
       },
     });
     const { password: _, ...userInfo } = user;

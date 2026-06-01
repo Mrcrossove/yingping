@@ -58,6 +58,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   @SubscribeMessage('joinRoom')
   handleJoinRoom(client: Socket, room: string) {
+    const user = client.data.user;
+    if (!user) return { event: 'error', data: 'unauthorized' };
+    const allowedRooms = new Set([`user:${user.sub}`, `role:${user.role}`]);
+    if (!allowedRooms.has(room)) return { event: 'error', data: 'forbidden' };
     client.join(room);
     return { event: 'joined', data: room };
   }
