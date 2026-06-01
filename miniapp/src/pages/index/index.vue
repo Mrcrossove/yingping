@@ -88,6 +88,7 @@
 import { ref, computed } from 'vue'
 import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
+import { useCartStore } from '@/stores/cart'
 
 const appStore = useAppStore()
 const cartStore = useCartStore()
