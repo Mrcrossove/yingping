@@ -17,6 +17,13 @@ export class UserController {
     return ApiResult.success(data);
   }
 
+  @Get('pending-merchants')
+  @Roles('boss', 'admin')
+  async getPendingMerchants(@Query() query: any) {
+    const data = await this.userService.getPendingMerchants(query);
+    return ApiResult.success(data);
+  }
+
   @Get(':id')
   @Roles('boss', 'admin')
   async findOne(@Param('id') id: string) {
@@ -44,13 +51,6 @@ export class UserController {
   async resetPassword(@Param('id') id: string, @Body('password') password: string) {
     const data = await this.userService.resetPassword(+id, password);
     return ApiResult.success(data, '密码重置成功');
-  }
-
-  @Get('pending-merchants')
-  @Roles('boss', 'admin')
-  async getPendingMerchants(@Query() query: any) {
-    const data = await this.userService.getPendingMerchants(query);
-    return ApiResult.success(data);
   }
 
   @Post(':id/approve-merchant')
