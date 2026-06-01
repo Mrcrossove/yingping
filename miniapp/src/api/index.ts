@@ -2,8 +2,10 @@ import { get, post, put, del } from '@/utils/request'
 
 export const authApi = {
   login: (data: any) => post('/auth/login', data),
+  wxLogin: (code: string) => post('/auth/wx-login', { code }),
   register: (data: any) => post('/auth/register', data),
   getProfile: () => get('/auth/profile'),
+  bindPhone: (phone: string) => post('/auth/bind-phone', { phone }),
 }
 
 export const categoryApi = {

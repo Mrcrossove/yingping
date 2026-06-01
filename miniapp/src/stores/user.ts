@@ -24,21 +24,38 @@ export const useUserStore = defineStore('user', () => {
     user.value = u ? JSON.parse(u) : null
   }
 
-  async function login(username: string, password: string) {
-    const data = await post('/auth/login', { username, password })
+  function saveLogin(data: any) {
     token.value = data.token
     user.value = data.user
     uni.setStorageSync('token', data.token)
     uni.setStorageSync('user', JSON.stringify(data.user))
+  }
+
+  async function login(username: string, password: string) {
+    const data = await post('/auth/login', { username, password })
+    saveLogin(data)
     return data
+  }
+
+  async function wxLogin() {
+    return new Promise((resolve, reject) => {
+      uni.login({
+        provider: 'weixin',
+        success: async (loginRes: any) => {
+          try {
+            const data = await post('/auth/wx-login', { code: loginRes.code })
+            saveLogin(data)
+            resolve(data)
+          } catch (err) { reject(err) }
+        },
+        fail: (err: any) => { reject(err) },
+      })
+    })
   }
 
   async function register(form: any) {
     const data = await post('/auth/register', form)
-    token.value = data.token
-    user.value = data.user
-    uni.setStorageSync('token', data.token)
-    uni.setStorageSync('user', JSON.stringify(data.user))
+    saveLogin(data)
     return data
   }
 
@@ -50,5 +67,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/index/index' })
   }
 
-  return { token, user, isLoggedIn, isEmployee, checkLogin, login, register, logout }
+  return { token, user, isLoggedIn, isEmployee, checkLogin, login, wxLogin, register, logout }
 })

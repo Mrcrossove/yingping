@@ -1,5 +1,18 @@
 <template>
   <view class="page">
+    <!-- 微信登录入口（未登录时显示） -->
+    <view class="wx-login-card" v-if="!userLoggedIn">
+      <text class="wx-title">饮品下单系统</text>
+      <text class="wx-desc">微信一键登录，管理您的订单</text>
+      <button class="wx-login-btn" @click="handleWxLogin" :loading="wxLoading">微信用户一键登录</button>
+      <text class="wx-account" @click="showAccountLogin = !showAccountLogin">账号密码登录</text>
+      <view v-if="showAccountLogin" class="account-form">
+        <input v-model="loginForm.username" placeholder="账号" class="form-input" />
+        <input v-model="loginForm.password" type="password" placeholder="密码" class="form-input" />
+        <button class="wx-login-btn secondary" @click="handleAccountLogin">登录</button>
+      </view>
+    </view>
+
     <!-- 用户信息卡片 -->
     <view class="user-card">
       <view class="uc-top">
@@ -76,11 +89,37 @@
 import { ref, computed, reactive } from 'vue'
 import { mockUser } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
+import { useUserStore } from '@/stores/user'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
 const showRoleSwitcher = ref(false)
+const wxLoading = ref(false)
+const userLoggedIn = ref(false)
+const showAccountLogin = ref(false)
+const loginForm = reactive({ username: '', password: '' })
 
 const user = reactive({ ...mockUser, taskCount: 12 })
+
+async function handleWxLogin() {
+  wxLoading.value = true
+  try {
+    await userStore.wxLogin()
+    userLoggedIn.value = true
+    uni.showToast({ title: '登录成功', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+  } finally { wxLoading.value = false }
+}
+
+async function handleAccountLogin() {
+  try {
+    await userStore.login(loginForm.username, loginForm.password)
+    userLoggedIn.value = true
+    showAccountLogin.value = false
+    uni.showToast({ title: '登录成功', icon: 'success' })
+  } catch {}
+}
 
 const roleColor = computed(() => {
   const colors: Record<string, string> = {
@@ -246,4 +285,12 @@ function handleLogout() {
 .role-option { padding: 14px; border-radius: 10px; margin-bottom: 6px; background: #f5f6f8; display: flex; justify-content: space-between; align-items: center; }
 .role-option.selected { background: #e8f0fe; border: 1px solid #1a73e8; }
 .role-desc { font-size: 11px; color: #999; }
+.wx-login-card { text-align: center; padding: 60px 30px; background: linear-gradient(180deg, #1a73e8, #f5f6f8 80%); }
+.wx-title { font-size: 22px; font-weight: 700; color: #fff; display: block; margin-bottom: 8px; }
+.wx-desc { font-size: 14px; color: rgba(255,255,255,0.7); display: block; margin-bottom: 30px; }
+.wx-login-btn { background: #07C160; color: #fff; border: none; border-radius: 24px; padding: 14px 48px; font-size: 16px; font-weight: 600; width: 280px; margin: 0 auto; }
+.wx-login-btn.secondary { background: #1a73e8; margin-top: 10px; }
+.wx-account { font-size: 13px; color: #1a73e8; margin-top: 16px; display: block; }
+.account-form { margin-top: 16px; background: #fff; border-radius: 12px; padding: 20px; }
+.form-input { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; }
 </style>
