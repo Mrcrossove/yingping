@@ -17,6 +17,12 @@
       <input class="search-input" v-model="keyword" placeholder="搜索商品/SKU编号" confirm-type="search" @confirm="filterProducts" />
     </view>
 
+    <swiper v-if="banners.length" class="banner-swiper" autoplay circular indicator-dots indicator-color="rgba(255,255,255,0.55)" indicator-active-color="#ffffff">
+      <swiper-item v-for="item in banners" :key="item.id" @click="handleBannerTap(item)">
+        <image class="banner-image" :src="imageUrl(item.image)" mode="aspectFill" />
+      </swiper-item>
+    </swiper>
+
     <!-- 分类横向滚动 -->
     <scroll-view scroll-x class="category-scroll" :show-scrollbar="false">
       <view v-for="c in categories" :key="c.id"
@@ -85,10 +91,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
 import { useCartStore } from '@/stores/cart'
+import { bannerApi } from '@/api/index'
+import { API_BASE_URL } from '@/config'
 
 const appStore = useAppStore()
 const cartStore = useCartStore()
@@ -96,6 +104,7 @@ const keyword = ref('')
 const currentCategory = ref(0)
 const cart = ref<Record<number, number>>({})
 const showRoleSwitcher = ref(false)
+const banners = ref<any[]>([])
 
 const categories = computed(() => mockCategories)
 const roles = [
@@ -151,9 +160,27 @@ function addToCart(p: Product) {
 }
 function switchCategory(id: number) { currentCategory.value = currentCategory.value === id ? 0 : id }
 function filterProducts() {}
-function onRefresh() { uni.showToast({ title: '刷新成功', icon: 'success' }) }
+async function fetchBanners() {
+  try {
+    banners.value = await bannerApi.list()
+  } catch {
+    banners.value = []
+  }
+}
+function imageUrl(url: string) {
+  if (!url) return ''
+  if (/^https?:\/\//.test(url)) return url
+  return API_BASE_URL + url
+}
+function handleBannerTap(item: any) {
+  if (!item.link) return
+  if (item.link.startsWith('/pages/')) uni.navigateTo({ url: item.link })
+}
+function onRefresh() { fetchBanners(); uni.showToast({ title: '刷新成功', icon: 'success' }) }
 function goCart() { uni.navigateTo({ url: '/pages/cart/cart' }) }
 function goManualOrder() { uni.navigateTo({ url: '/pages/cart/cart?mode=agent' }) }
+
+onMounted(fetchBanners)
 </script>
 
 <style scoped>
@@ -165,29 +192,31 @@ function goManualOrder() { uni.navigateTo({ url: '/pages/cart/cart?mode=agent' }
 .scan-btn { font-size: 20px; }
 .search-bar { padding: 8px 16px; background: #fff; }
 .search-input { background: #f5f6f8; border-radius: 20px; padding: 10px 16px; font-size: 14px; }
+.banner-swiper { height: 170px; margin: 10px 12px 8px; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 4px rgba(20,31,51,0.05); flex-shrink: 0; }
+.banner-image { width: 100%; height: 100%; display: block; }
 .category-scroll { white-space: nowrap; padding: 10px 16px; background: #fff; flex-shrink: 0; }
 .category-tag { display: inline-block; padding: 7px 14px; margin-right: 8px; border-radius: 18px; background: #f0f2f5; font-size: 13px; color: #555; transition: all 0.2s; }
 .category-tag.active { background: #1a73e8; color: #fff; font-weight: 600; }
-.product-list { flex: 1; padding: 8px 10px; }
-.product-card { background: #fff; border-radius: 12px; margin-bottom: 10px; overflow: hidden; display: flex; }
-.p-image { width: 100px; height: 120px; background: #f5f6f8; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.product-list { flex: 1; padding: 8px 12px; box-sizing: border-box; }
+.product-card { background: #fff; border-radius: 10px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: stretch; box-shadow: 0 1px 4px rgba(20, 31, 51, 0.04); }
+.p-image { width: 88px; min-height: 128px; background: #f5f6f8; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .img-placeholder { width: 44px; height: 44px; background: #e8f0fe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #1a73e8; font-weight: bold; }
-.spec-tag { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 3px; max-width: 90px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.p-body { flex: 1; padding: 8px 12px 8px 8px; display: flex; flex-direction: column; min-width: 0; }
-.p-name { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tier-prices { margin-bottom: 2px; }
-.tier-row { display: flex; justify-content: space-between; padding: 1px 0; }
-.tier-qty { font-size: 10px; color: #999; }
-.tier-price { font-size: 11px; color: #666; font-weight: 500; }
-.tier-price.highlight { color: #e8453c; font-weight: 700; font-size: 13px; }
-.p-footer { display: flex; justify-content: space-between; margin-top: auto; padding-top: 2px; }
+.spec-tag { position: absolute; bottom: 6px; left: 6px; right: 6px; background: rgba(0,0,0,0.62); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; }
+.p-body { flex: 1; padding: 9px 10px 9px 10px; display: flex; flex-direction: column; min-width: 0; box-sizing: border-box; }
+.p-name { font-size: 14px; font-weight: 700; color: #1a1a1a; line-height: 20px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
+.tier-prices { width: 142px; max-width: 100%; margin-bottom: 4px; }
+.tier-row { display: grid; grid-template-columns: 48px 1fr; column-gap: 10px; align-items: baseline; padding: 1px 0; }
+.tier-qty { font-size: 10px; color: #8c8c8c; white-space: nowrap; }
+.tier-price { font-size: 11px; color: #666; font-weight: 500; white-space: nowrap; text-align: left; }
+.tier-price.highlight { color: #e8453c; font-weight: 800; font-size: 13px; }
+.p-footer { display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-top: auto; padding-top: 2px; min-width: 0; }
 .min-order { font-size: 10px; color: #e8453c; background: #fff0f0; padding: 1px 5px; border-radius: 3px; }
-.stock { font-size: 10px; color: #999; }
-.p-action { display: flex; align-items: center; margin-top: 6px; gap: 6px; }
+.stock { font-size: 10px; color: #8c8c8c; white-space: nowrap; }
+.p-action { display: flex; align-items: center; margin-top: 7px; gap: 8px; min-width: 0; }
 .stepper { display: flex; align-items: center; border: 1px solid #e0e0e0; border-radius: 5px; overflow: hidden; flex-shrink: 0; }
 .step-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #555; background: #f9f9f9; }
 .step-input { width: 38px; height: 26px; text-align: center; font-size: 13px; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; }
-.add-cart-btn { background: #1a73e8; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 5px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.add-cart-btn { background: #1a73e8; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 5px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 .float-cart { position: fixed; bottom: 20px; left: 16px; right: 16px; background: linear-gradient(135deg, #1a73e8, #1557b0); border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; color: #fff; box-shadow: 0 4px 20px rgba(26,115,232,0.4); }
 .cart-badge { background: #fff; color: #1a73e8; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 10px; }
 .cart-label { flex: 1; font-size: 15px; font-weight: 600; }

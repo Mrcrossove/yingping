@@ -64,3 +64,10 @@ export const fileApi = {
     })
   },
 }
+
+export const bannerApi = {
+  list: (params?: any) => request.get('/banners', { params }),
+  create: (data: any) => request.post('/banners', data),
+  update: (id: number, data: any) => request.put(`/banners/${id}`, data),
+  remove: (id: number) => request.delete(`/banners/${id}`),
+}

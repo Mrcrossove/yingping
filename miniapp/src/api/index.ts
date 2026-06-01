@@ -17,6 +17,10 @@ export const productApi = {
   detail: (id: number) => get(`/products/${id}`),
 }
 
+export const bannerApi = {
+  list: () => get('/banners/public'),
+}
+
 export const orderApi = {
   create: (data: any) => post('/orders', data),
   list: (params?: any) => get('/orders', params),

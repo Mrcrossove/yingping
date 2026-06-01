@@ -41,6 +41,12 @@ const router = createRouter({
           meta: { title: '商品管理', icon: 'Goods' },
         },
         {
+          path: 'banners',
+          name: 'Banners',
+          component: () => import('@/views/Banners.vue'),
+          meta: { title: '轮播图管理', icon: 'Picture' },
+        },
+        {
           path: 'users',
           name: 'Users',
           component: () => import('@/views/Users.vue'),

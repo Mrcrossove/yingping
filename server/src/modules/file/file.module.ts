@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { Controller, Post, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiResult } from '../../common/api-result';
 
-const uploadDir = join(__dirname, '..', '..', '..', 'uploads');
+const uploadDir = process.env.UPLOAD_DIR || join(process.cwd(), '..', 'uploads');
+if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
 
 @Controller('files')
 export class FileController {
