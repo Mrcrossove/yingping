@@ -46,6 +46,27 @@ export class UserController {
     return ApiResult.success(data, '密码重置成功');
   }
 
+  @Get('pending-merchants')
+  @Roles('boss', 'admin')
+  async getPendingMerchants(@Query() query: any) {
+    const data = await this.userService.getPendingMerchants(query);
+    return ApiResult.success(data);
+  }
+
+  @Post(':id/approve-merchant')
+  @Roles('boss', 'admin')
+  async approveMerchant(@Param('id') id: string) {
+    const data = await this.userService.approveMerchant(+id);
+    return ApiResult.success(data, '商户审核通过');
+  }
+
+  @Post(':id/reject-merchant')
+  @Roles('boss', 'admin')
+  async rejectMerchant(@Param('id') id: string) {
+    const data = await this.userService.rejectMerchant(+id);
+    return ApiResult.success(data, '商户已拒绝');
+  }
+
   @Delete(':id')
   @Roles('boss', 'admin')
   async remove(@Param('id') id: string) {

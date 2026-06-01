@@ -15,4 +15,6 @@ export const orderApi = {
   deliveryComplete: (id: number) => request.post(`/orders/${id}/delivery-complete`),
   cancel: (id: number) => request.post(`/orders/${id}/cancel`),
   manualCreate: (data: any) => request.post('/orders/manual', data),
+  batchDispatch: (orderIds: number[], makerId: number, deliveryId: number) =>
+    request.post('/orders/batch-dispatch', { orderIds, makerId, deliveryId }),
 }

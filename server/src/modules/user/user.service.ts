@@ -6,10 +6,11 @@ import * as bcrypt from 'bcryptjs';
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: { page?: number; pageSize?: number; role?: string; keyword?: string }) {
-    const { page = 1, pageSize = 20, role, keyword } = query;
+  async findAll(query: { page?: number; pageSize?: number; role?: string; keyword?: string; status?: number }) {
+    const { page = 1, pageSize = 20, role, keyword, status } = query;
     const where: any = {};
     if (role) where.role = role;
+    if (status !== undefined) where.status = +status;
     if (keyword) {
       where.OR = [
         { realName: { contains: keyword } },
@@ -89,4 +90,27 @@ export class UserService {
     });
   }
 
+  async getPendingMerchants(query: { page?: number; pageSize?: number }) {
+    return this.findAll({ ...query, role: 'merchant', status: 2 });
+  }
+
+  async approveMerchant(id: number) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user || user.role !== 'merchant') throw new NotFoundException('商户不存在');
+    return this.prisma.user.update({
+      where: { id },
+      data: { status: 1 },
+      select: { id: true, realName: true, phone: true, status: true },
+    });
+  }
+
+  async rejectMerchant(id: number) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user || user.role !== 'merchant') throw new NotFoundException('商户不存在');
+    return this.prisma.user.update({
+      where: { id },
+      data: { status: 0 },
+      select: { id: true, realName: true, status: true },
+    });
+  }
 }

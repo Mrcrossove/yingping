@@ -72,6 +72,7 @@ export class AuthService {
       data: {
         username: data.username, password: hashed,
         realName: data.realName, role: data.role as any, phone: data.phone,
+        status: data.role === 'merchant' ? 2 : 1,
       },
     });
     const { password: _, ...userInfo } = user;

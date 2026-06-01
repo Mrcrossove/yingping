@@ -14,7 +14,11 @@
           </div>
         </div>
       </template>
-      <el-table :data="orders" v-loading="loading" stripe>
+      <div style="margin-bottom: 12px;" v-if="selectedOrders.length > 0">
+        <el-button type="warning" @click="showBatchDialog">批量派单 ({{ selectedOrders.length }} 单)</el-button>
+      </div>
+      <el-table :data="orders" v-loading="loading" stripe @selection-change="onSelectionChange" ref="orderTable">
+        <el-table-column type="selection" width="40" :selectable="isSelectable" />
         <el-table-column prop="orderNo" label="订单编号" width="200" />
         <el-table-column prop="merchant.realName" label="商户" width="100" />
         <el-table-column label="商品">
@@ -51,12 +55,33 @@
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="batchVisible" title="批量派单" width="450px">
+      <el-form label-width="80px">
+        <el-form-item label="已选">已选择 {{ selectedOrders.length }} 个订单</el-form-item>
+        <el-form-item label="制作员">
+          <el-select v-model="batchMakerId" placeholder="选择制作员" style="width:100%">
+            <el-option v-for="m in makers" :key="m.id" :label="m.realName" :value="m.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="配送员">
+          <el-select v-model="batchDeliveryId" placeholder="选择配送员" style="width:100%">
+            <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!batchMakerId || !batchDeliveryId" @click="handleBatchDispatch">确认派单</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { orderApi, exportApi } from '@/api/index'
+import { ElMessage } from 'element-plus'
+import { orderApi, exportApi, userApi } from '@/api/index'
 
 const loading = ref(false)
 const orders = ref<any[]>([])
@@ -99,6 +124,32 @@ function handleExport() {
   a.href = url
   a.setAttribute('download', '')
   a.click()
+}
+
+const selectedOrders = ref<any[]>([])
+const batchVisible = ref(false)
+const batchMakerId = ref<number | null>(null)
+const batchDeliveryId = ref<number | null>(null)
+const makers = ref<any[]>([])
+const deliverys = ref<any[]>([])
+
+function isSelectable(row: any) { return row.status === 'accepted' }
+function onSelectionChange(val: any[]) { selectedOrders.value = val }
+
+async function showBatchDialog() {
+  const batches = await Promise.all([userApi.list({ role: 'maker', pageSize: 100 }), userApi.list({ role: 'delivery', pageSize: 100 })])
+  makers.value = batches[0].list; deliverys.value = batches[1].list
+  batchVisible.value = true
+}
+
+async function handleBatchDispatch() {
+  if (!batchMakerId.value || !batchDeliveryId.value) return
+  const orderIds = selectedOrders.value.map(o => o.id)
+  await (orderApi as any).batchDispatch(orderIds, batchMakerId.value, batchDeliveryId.value)
+  ElMessage.success('批量派单完成')
+  batchVisible.value = false
+  selectedOrders.value = []
+  fetchOrders()
 }
 
 onMounted(fetchOrders)

@@ -15,7 +15,11 @@
           </div>
         </div>
       </template>
-      <el-table :data="list" v-loading="loading" stripe>
+      <div style="margin-bottom: 12px;" v-if="selectedRows.length > 0">
+        <el-button type="success" @click="handleBatchApprove">批量通过 ({{ selectedRows.length }})</el-button>
+      </div>
+      <el-table :data="list" v-loading="loading" stripe @selection-change="onSelectionChange" ref="withdrawTable">
+        <el-table-column type="selection" width="40" :selectable="(row: any) => row.status === 'pending'" />
         <el-table-column prop="user.realName" label="姓名" width="100" />
         <el-table-column label="角色" width="100">
           <template #default="{ row }">{{ roleMap[row.user?.role] || row.user?.role }}</template>
@@ -79,6 +83,7 @@ const filterStatus = ref('')
 const rejectDialogVisible = ref(false)
 const rejectRemark = ref('')
 const currentRejectId = ref(0)
+const selectedRows = ref<any[]>([])
 
 const statusMap: Record<string, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝', paid: '已打款' }
 const roleMap: Record<string, string> = { salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员' }
@@ -104,6 +109,16 @@ async function handleReject() {
 }
 
 async function handleMarkPaid(id: number) { await withdrawalApi.markPaid(id); ElMessage.success('已标记为已打款'); fetchList() }
+
+function onSelectionChange(val: any[]) { selectedRows.value = val }
+
+async function handleBatchApprove() {
+  const ids = selectedRows.value.map((r: any) => r.id)
+  await withdrawalApi.batchApprove(ids)
+  ElMessage.success('批量审核完成')
+  selectedRows.value = []
+  fetchList()
+}
 
 function handleExport() { window.open(exportApi.withdrawals(), '_blank') }
 

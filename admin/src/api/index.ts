@@ -32,6 +32,7 @@ export const withdrawalApi = {
   approve: (id: number) => request.post(`/withdrawals/${id}/approve`),
   reject: (id: number, remark: string) => request.post(`/withdrawals/${id}/reject`, { remark }),
   markPaid: (id: number) => request.post(`/withdrawals/${id}/mark-paid`),
+  batchApprove: (ids: number[]) => request.post('/withdrawals/batch-approve', { ids }),
 }
 
 export const promotionApi = {
