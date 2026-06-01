@@ -104,4 +104,11 @@ export class OrderController {
     const data = await this.orderService.manualCreate(body, req.user.id);
     return ApiResult.success(data, '手动录单成功');
   }
+
+  @Post('batch-dispatch')
+  @Roles('salesperson', 'admin', 'boss')
+  async batchDispatch(@Body() body: { orderIds: number[]; makerId: number; deliveryId: number }, @Request() req) {
+    const data = await this.orderService.batchDispatch(body.orderIds, body.makerId, body.deliveryId, req.user.id);
+    return ApiResult.success(data, '批量派单完成');
+  }
 }

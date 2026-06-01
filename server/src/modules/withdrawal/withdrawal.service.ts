@@ -97,4 +97,10 @@ export class WithdrawalService {
     });
   }
 
+  async batchApprove(ids: number[]) {
+    return this.prisma.withdrawal.updateMany({
+      where: { id: { in: ids }, status: 'pending' },
+      data: { status: 'approved', processedAt: new Date() },
+    });
+  }
 }

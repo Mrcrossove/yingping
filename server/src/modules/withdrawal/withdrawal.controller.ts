@@ -55,4 +55,12 @@ export class WithdrawalController {
     const data = await this.withdrawalService.reject(+id, remark);
     return ApiResult.success(data, '已拒绝');
   }
+
+  @Post('batch-approve')
+  @UseGuards(RolesGuard)
+  @Roles('boss', 'admin')
+  async batchApprove(@Body('ids') ids: number[]) {
+    const data = await this.withdrawalService.batchApprove(ids);
+    return ApiResult.success(data, `已批量通过 ${data.count} 条`);
+  }
 }

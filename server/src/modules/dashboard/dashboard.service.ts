@@ -88,4 +88,12 @@ export class DashboardService {
       totalPending: Number(totalPending._sum.amount || 0),
     };
   }
+
+  async getLowStock() {
+    const products = await this.prisma.product.findMany({
+      where: { status: 1 },
+      select: { id: true, name: true, stock: true, minStock: true, unit: true },
+    });
+    return products.filter((p) => (p.stock || 0) <= (p.minStock || 10));
+  }
 }

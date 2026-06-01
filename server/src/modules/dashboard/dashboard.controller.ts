@@ -28,4 +28,10 @@ export class DashboardController {
     const data = await this.dashboardService.getEarningsSummary();
     return ApiResult.success(data);
   }
+
+  @Get('low-stock')
+  async getLowStock() {
+    const data = await this.dashboardService.getLowStock();
+    return ApiResult.success(data);
+  }
 }

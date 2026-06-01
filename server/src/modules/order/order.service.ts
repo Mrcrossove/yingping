@@ -345,6 +345,31 @@ export class OrderService {
     return this.findOne(order.id);
   }
 
+  async batchDispatch(orderIds: number[], makerId: number, deliveryId: number, operatorId: number) {
+    const results: { id: number; success: boolean; message?: string }[] = [];
+    for (const id of orderIds) {
+      try {
+        const result = await this.dispatchBoth(id, makerId, deliveryId, operatorId);
+        results.push({ id, success: true });
+      } catch (e: any) {
+        results.push({ id, success: false, message: e.message });
+      }
+    }
+    return results;
+  }
+
+  async getLowStockProducts() {
+    return this.prisma.product.findMany({
+      where: {
+        status: 1,
+        stock: { not: null },
+        minStock: { not: null },
+      },
+    }).then((products) =>
+      products.filter((p) => (p.stock || 0) <= (p.minStock || 10))
+    );
+  }
+
   private async calculateCommissions(orderId: number) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },

@@ -108,6 +108,8 @@ model Product {
   unit        String?  @default("杯") @db.VarChar(10)
   description String?  @db.Text
   status      Int      @default(1) @db.TinyInt
+  stock       Int?     @default(0)
+  minStock    Int?     @default(10) @map("min_stock")
   makerRate   Decimal? @db.Decimal(10, 2) @map("maker_rate")
   deliveryRate Decimal? @db.Decimal(10, 2) @map("delivery_rate")
   createdAt   DateTime @default(now()) @map("created_at")
