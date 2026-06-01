@@ -1,0 +1,52 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install & Build Server
+        run: |
+          cd server
+          npm ci
+          npx prisma generate
+          npm run build
+
+      - name: Install & Build Admin
+        run: |
+          cd admin
+          npm ci
+          npm run build
+
+      - name: Run Tests
+        run: |
+          cd server
+          npm test -- --passWithNoTests
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /opt/beverage-order
+            git pull origin main
+            cd server
+            npm ci --production
+            npx prisma generate
+            npx prisma migrate deploy
+            npm run build
+            cd /opt/beverage-order
+            pm2 restart beverage-server

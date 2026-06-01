@@ -47,6 +47,10 @@
     {
       "path": "pages/address/address",
       "style": { "navigationBarTitleText": "收货地址" }
+    },
+    {
+      "path": "pages/merchant-apply/merchant-apply",
+      "style": { "navigationBarTitleText": "商家入驻" }
     }
   ],
   "globalStyle": {
