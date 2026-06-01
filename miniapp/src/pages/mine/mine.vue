@@ -95,7 +95,7 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const showRoleSwitcher = ref(false)
 const wxLoading = ref(false)
-const userLoggedIn = ref(false)
+const userLoggedIn = computed(() => userStore.isLoggedIn)
 const showAccountLogin = ref(false)
 const loginForm = reactive({ username: '', password: '' })
 
@@ -105,7 +105,6 @@ async function handleWxLogin() {
   wxLoading.value = true
   try {
     await userStore.wxLogin()
-    userLoggedIn.value = true
     uni.showToast({ title: '登录成功', icon: 'success' })
   } catch {
     uni.showToast({ title: '登录失败，请重试', icon: 'none' })
@@ -115,7 +114,6 @@ async function handleWxLogin() {
 async function handleAccountLogin() {
   try {
     await userStore.login(loginForm.username, loginForm.password)
-    userLoggedIn.value = true
     showAccountLogin.value = false
     uni.showToast({ title: '登录成功', icon: 'success' })
   } catch {}
