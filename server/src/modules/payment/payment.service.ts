@@ -74,7 +74,7 @@ export class PaymentService {
 
     const [list, total] = await Promise.all([
       this.prisma.payment.findMany({
-        where, skip: (page - 1) * pageSize, take: pageSize,
+        where, skip: (page - 1) * pageSize, take: +pageSize,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.payment.count({ where }),

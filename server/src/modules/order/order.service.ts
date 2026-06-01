@@ -78,7 +78,7 @@ export class OrderService {
       this.prisma.order.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: {
           items: { include: { product: true } },
           merchant: { select: { id: true, realName: true, phone: true } },

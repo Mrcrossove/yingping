@@ -13,7 +13,7 @@ export class EarningService {
       this.prisma.earning.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.earning.count({ where }),
@@ -48,7 +48,7 @@ export class EarningService {
       this.prisma.earning.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: {
           user: { select: { id: true, realName: true, role: true } },
         },

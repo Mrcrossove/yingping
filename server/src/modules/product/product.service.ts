@@ -16,7 +16,7 @@ export class ProductService {
       this.prisma.product.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: { category: { select: { id: true, name: true } } },
         orderBy: { createdAt: 'desc' },
       }),

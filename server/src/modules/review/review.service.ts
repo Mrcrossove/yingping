@@ -31,7 +31,7 @@ export class ReviewService {
     const where = { userId };
     const [list, total] = await Promise.all([
       this.prisma.review.findMany({
-        where, skip: (page - 1) * pageSize, take: pageSize,
+        where, skip: (page - 1) * pageSize, take: +pageSize,
         orderBy: { createdAt: 'desc' },
         include: { order: { select: { orderNo: true } } },
       }),

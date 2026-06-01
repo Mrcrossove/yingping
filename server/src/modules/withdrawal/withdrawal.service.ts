@@ -43,7 +43,7 @@ export class WithdrawalService {
       this.prisma.withdrawal.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: {
           user: { select: { id: true, realName: true, role: true, phone: true } },
         },

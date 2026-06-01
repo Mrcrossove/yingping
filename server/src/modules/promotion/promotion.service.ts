@@ -44,7 +44,7 @@ export class PromotionService {
       this.prisma.merchantBinding.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: {
           merchant: { select: { id: true, realName: true, phone: true } },
           promoter: { select: { id: true, realName: true, phone: true } },
@@ -65,7 +65,7 @@ export class PromotionService {
       this.prisma.promotionCode.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         include: { promoter: { select: { id: true, realName: true, phone: true } } },
         orderBy: { createdAt: 'desc' },
       }),
@@ -123,7 +123,7 @@ export class PromotionService {
     const earnings = await this.prisma.earning.findMany({
       where: { userId: promoterId, role: 'promoter' },
       skip: (page - 1) * pageSize,
-      take: pageSize,
+      take: +pageSize,
       orderBy: { createdAt: 'desc' },
       include: {
         order: { select: { merchant: { select: { realName: true } } } },

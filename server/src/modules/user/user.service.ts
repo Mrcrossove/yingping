@@ -22,7 +22,7 @@ export class UserService {
       this.prisma.user.findMany({
         where,
         skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: +pageSize,
         select: { id: true, username: true, realName: true, role: true, phone: true, avatar: true, status: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
       }),
