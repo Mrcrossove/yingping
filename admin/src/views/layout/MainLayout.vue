@@ -42,6 +42,7 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { canAccessRoute } from '@/utils/access'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -55,7 +56,9 @@ const roleLabel = computed(() => roleMap[userStore.role] || userStore.role)
 
 const menuItems = computed(() => {
   const all = route.matched[0]?.children?.filter((r) => !r.meta?.hidden) || []
-  return all.map((r) => ({ path: r.path, title: r.meta?.title as string, icon: r.meta?.icon as string }))
+  return all
+    .filter((r) => canAccessRoute(r.name, userStore.role))
+    .map((r) => ({ path: `/${r.path}`, title: r.meta?.title as string, icon: r.meta?.icon as string }))
 })
 </script>
 

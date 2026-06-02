@@ -24,6 +24,12 @@ export const useUserStore = defineStore('user', () => {
     user.value = u ? JSON.parse(u) : null
   }
 
+  function capturePromoterCode(options?: any) {
+    const rawScene = options?.query?.scene
+    const code = rawScene ? decodeURIComponent(rawScene) : options?.query?.promoterCode
+    if (code) uni.setStorageSync('promoterCode', String(code).trim())
+  }
+
   function saveLogin(data: any) {
     token.value = data.token
     user.value = data.user
@@ -43,7 +49,10 @@ export const useUserStore = defineStore('user', () => {
         provider: 'weixin',
         success: async (loginRes: any) => {
           try {
-            const data = await post('/auth/wx-login', { code: loginRes.code })
+            const data = await post('/auth/wx-login', {
+              code: loginRes.code,
+              promoterCode: uni.getStorageSync('promoterCode') || undefined,
+            })
             saveLogin(data)
             resolve(data)
           } catch (err) { reject(err) }
@@ -54,7 +63,10 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function register(form: any) {
-    const data = await post('/auth/register', form)
+    const data = await post('/auth/register', {
+      ...form,
+      promoterCode: uni.getStorageSync('promoterCode') || undefined,
+    })
     saveLogin(data)
     return data
   }
@@ -67,5 +79,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/index/index' })
   }
 
-  return { token, user, isLoggedIn, isEmployee, checkLogin, login, wxLogin, register, logout }
+  return { token, user, isLoggedIn, isEmployee, capturePromoterCode, checkLogin, login, wxLogin, register, logout }
 })

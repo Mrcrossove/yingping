@@ -1,7 +1,12 @@
 <template>
   <div>
     <el-card>
-      <template #header><span>推广管理</span></template>
+      <template #header>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span>推广管理</span>
+          <el-button v-if="isPromoter" type="primary" :loading="generating" @click="handleGenerateCode">生成推广码</el-button>
+        </div>
+      </template>
       <el-tabs>
         <el-tab-pane label="推广码">
           <el-table :data="codes.list" v-loading="codesLoading" stripe>
@@ -38,14 +43,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { promotionApi } from '@/api/index'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const codes = reactive({ list: [], total: 0 })
 const bindings = reactive({ list: [], total: 0 })
 const codesLoading = ref(false)
 const bindingsLoading = ref(false)
+const generating = ref(false)
 const bindingsPage = ref(1)
+const isPromoter = computed(() => userStore.role === 'promoter')
 
 async function fetchCodes() {
   codesLoading.value = true
@@ -57,6 +67,17 @@ async function fetchBindings() {
   bindingsLoading.value = true
   try { const data = await promotionApi.bindings({ page: bindingsPage.value, pageSize: 20 }); bindings.list = data.list; bindings.total = data.total }
   finally { bindingsLoading.value = false }
+}
+
+async function handleGenerateCode() {
+  generating.value = true
+  try {
+    await promotionApi.generateCode()
+    ElMessage.success('推广码生成成功')
+    fetchCodes()
+  } finally {
+    generating.value = false
+  }
 }
 
 onMounted(() => { fetchCodes(); fetchBindings() })

@@ -15,6 +15,7 @@ class RegisterDto {
   @IsString() @IsNotEmpty() realName: string;
   @IsOptional() @IsIn(['merchant']) role?: string;
   @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() promoterCode?: string;
 }
 
 @Controller('auth')
@@ -28,8 +29,8 @@ export class AuthController {
   }
 
   @Post('wx-login')
-  async wxLogin(@Body('code') code: string) {
-    const data = await this.authService.wxLogin(code);
+  async wxLogin(@Body('code') code: string, @Body('promoterCode') promoterCode?: string) {
+    const data = await this.authService.wxLogin(code, promoterCode);
     return ApiResult.success(data, '微信登录成功');
   }
 

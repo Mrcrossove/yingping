@@ -25,6 +25,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { authApi } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
+import { getHomePath } from '@/utils/access'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -44,7 +45,7 @@ async function handleLogin() {
     const data = await authApi.login(form)
     userStore.setLogin(data)
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    router.push(getHomePath(data.user.role))
   } finally {
     loading.value = false
   }

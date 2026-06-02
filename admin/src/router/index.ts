@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { canAccessRoute, getHomePath, getUserRole } from '@/utils/access'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -10,7 +11,7 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/dashboard',
+      redirect: () => getHomePath(getUserRole()),
     },
     {
       path: '/',
@@ -101,10 +102,13 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
+  const role = getUserRole()
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/dashboard')
+    next(getHomePath(role))
+  } else if (token && !canAccessRoute(to.name, role)) {
+    next(getHomePath(role))
   } else {
     next()
   }

@@ -95,11 +95,14 @@ import { ref, computed, onMounted } from 'vue'
 import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
 import { useCartStore } from '@/stores/cart'
+import { useUserStore } from '@/stores/user'
 import { bannerApi } from '@/api/index'
 import { API_BASE_URL } from '@/config'
+import { onLoad } from '@dcloudio/uni-app'
 
 const appStore = useAppStore()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 const keyword = ref('')
 const currentCategory = ref(0)
 const cart = ref<Record<number, number>>({})
@@ -180,6 +183,7 @@ function onRefresh() { fetchBanners(); uni.showToast({ title: '刷新成功', ic
 function goCart() { uni.navigateTo({ url: '/pages/cart/cart' }) }
 function goManualOrder() { uni.navigateTo({ url: '/pages/cart/cart?mode=agent' }) }
 
+onLoad((options: any) => userStore.capturePromoterCode({ query: options }))
 onMounted(fetchBanners)
 </script>
 

@@ -25,7 +25,7 @@ export class AuthService {
     return { token, user: userInfo };
   }
 
-  async wxLogin(code: string) {
+  async wxLogin(code: string, promoterCode?: string) {
     if (!code) throw new BadRequestException('缺少登录凭证');
 
     const appId = process.env.WX_APPID || 'wx_placeholder';
@@ -58,13 +58,15 @@ export class AuthService {
     if (user.status === 0) throw new UnauthorizedException('账号已被禁用');
     if (user.status === 2) throw new UnauthorizedException('账号待审核');
 
+    await this.bindPromoterIfNeeded(user.id, promoterCode);
+
     const { password: _, ...userInfo } = user;
     const token = this.signToken(user);
     return { token, user: userInfo, isNew: !user.realName };
   }
 
   async register(data: {
-    username: string; password: string; realName: string; role?: string; phone?: string;
+    username: string; password: string; realName: string; role?: string; phone?: string; promoterCode?: string;
   }) {
     const exists = await this.prisma.user.findUnique({ where: { username: data.username } });
     if (exists) throw new UnauthorizedException('账号已存在');
@@ -77,6 +79,7 @@ export class AuthService {
         status: 2,
       },
     });
+    await this.bindPromoterIfNeeded(user.id, data.promoterCode);
     const { password: _, ...userInfo } = user;
     return userInfo;
   }
@@ -101,6 +104,21 @@ export class AuthService {
   private signToken(user: any) {
     return this.jwtService.sign({
       sub: user.id, username: user.username, role: user.role,
+    });
+  }
+
+  private async bindPromoterIfNeeded(merchantId: number, promoterCode?: string) {
+    const codeText = promoterCode?.trim();
+    if (!codeText) return;
+
+    const code = await this.prisma.promotionCode.findUnique({ where: { code: codeText } });
+    if (!code || code.status === 0) return;
+
+    const existing = await this.prisma.merchantBinding.findUnique({ where: { merchantId } });
+    if (existing) return;
+
+    await this.prisma.merchantBinding.create({
+      data: { merchantId, promoterId: code.promoterId },
     });
   }
 }

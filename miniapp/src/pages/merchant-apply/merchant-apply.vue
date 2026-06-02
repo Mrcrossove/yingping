@@ -36,8 +36,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { authApi } from '@/api/index'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const agreed = ref(false)
 const submitting = ref(false)
 const form = reactive({
@@ -53,7 +54,7 @@ async function handleSubmit() {
   if (!canSubmit.value) return
   submitting.value = true
   try {
-    await authApi.register({
+    await userStore.register({
       username: form.username, password: form.password,
       realName: form.realName, phone: form.phone, role: 'merchant',
     })

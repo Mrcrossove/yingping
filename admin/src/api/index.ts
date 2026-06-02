@@ -40,6 +40,8 @@ export const promotionApi = {
   myCode: () => request.get('/promotion/my-code'),
   bindings: (params?: any) => request.get('/promotion/bindings', { params }),
   codes: (params?: any) => request.get('/promotion/codes', { params }),
+  wxacode: () => request.get('/promotion/wxacode'),
+  commissionDetails: (params?: any) => request.get('/promotion/commission-details', { params }),
 }
 
 export const dashboardApi = {
