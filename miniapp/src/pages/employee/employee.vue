@@ -69,15 +69,25 @@
     <view v-if="showManualOrder" class="modal-mask">
       <view class="modal-content">
         <text style="font-size: 16px; font-weight: bold; margin-bottom: 16px;">手动录单</text>
-        <input v-model="manualForm.merchantId" placeholder="商户ID" class="form-input" />
+        <view class="selector-row" @click="selectMerchant">
+          <text>{{ selectedMerchant ? selectedMerchant.realName : '请选择商户' }}</text>
+          <text class="selector-arrow">›</text>
+        </view>
         <view class="manual-items">
           <view v-for="(item, i) in manualForm.items" :key="i" class="manual-item">
-            <input v-model.number="item.productId" placeholder="商品ID" style="flex:1" />
+            <view class="product-picker" @click="selectProduct(i)">
+              <text>{{ item.productName || '选择商品' }}</text>
+            </view>
             <input v-model.number="item.quantity" placeholder="数量" style="width:60px;margin:0 8px" />
             <text @click="removeManualItem(i)" style="color:#f56c6c">删除</text>
           </view>
           <button @click="addManualItem" class="small-btn">+ 添加商品</button>
         </view>
+        <view class="manual-total">合计：¥{{ manualTotal.toFixed(2) }}</view>
+        <input v-model="manualForm.receiverName" placeholder="收货人" class="form-input" />
+        <input v-model="manualForm.receiverPhone" placeholder="收货电话" class="form-input" />
+        <input v-model="manualForm.receiverAddress" placeholder="收货地址" class="form-input" />
+        <textarea v-model="manualForm.note" placeholder="订单备注 (选填)" class="form-textarea" />
         <view style="display:flex; gap:10px; margin-top:16px;">
           <button @click="showManualOrder = false" style="flex:1">取消</button>
           <button @click="handleManualCreate" style="flex:1; background:#409EFF; color:#fff">确认录单</button>
@@ -90,18 +100,30 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { orderApi } from '@/api/index'
+import { orderApi, productApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const orders = ref<any[]>([])
 const showManualOrder = ref(false)
-const manualForm = ref({ merchantId: '', items: [{ productId: '', quantity: 1 }] })
+const merchants = ref<any[]>([])
+const products = ref<any[]>([])
+const selectedMerchant = ref<any>(null)
+const manualForm = ref({
+  items: [{ productId: 0, productName: '', price: 0, quantity: 1 }],
+  receiverName: '',
+  receiverPhone: '',
+  receiverAddress: '',
+  note: '',
+})
 
 const roleMap: Record<string, string> = {
   salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员',
 }
 const roleLabel = computed(() => roleMap[userStore.user?.role || ''] || '')
+const manualTotal = computed(() =>
+  manualForm.value.items.reduce((sum: number, item: any) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+)
 
 const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
@@ -118,21 +140,51 @@ async function fetchOrders() {
   orders.value = data.list.filter((o: any) => o.status !== 'delivered' && o.status !== 'cancelled')
 }
 
+async function fetchManualOptions() {
+  if (userStore.user?.role !== 'salesperson') return
+  const [merchantData, productData] = await Promise.all([
+    userApi.merchants({ pageSize: 100 }),
+    productApi.list({ pageSize: 100 }),
+  ])
+  merchants.value = merchantData.list || []
+  products.value = productData.list || []
+}
+
 function goDetail(id: number) { uni.navigateTo({ url: `/pages/order-detail/order-detail?id=${id}` }) }
 
 async function handleAccept(id: number) { await orderApi.accept(id); fetchOrders() }
 
 async function showDispatchMaker(orderId: number) {
-  uni.showActionSheet({
-    itemList: ['制作员1', '制作员2'],
-    success: async (res: any) => { await orderApi.dispatchToMaker(orderId, 0); fetchOrders() },
-  })
+  const maker = await selectDispatchStaff('maker')
+  if (!maker) return
+  await orderApi.dispatchToMaker(orderId, maker.id)
+  uni.showToast({ title: '已派单给制作员', icon: 'success' })
+  fetchOrders()
 }
 
 async function showDispatchDelivery(orderId: number) {
-  uni.showActionSheet({
-    itemList: ['配送员1', '配送员2'],
-    success: async (res: any) => { await orderApi.dispatchToDelivery(orderId, 0); fetchOrders() },
+  const delivery = await selectDispatchStaff('delivery')
+  if (!delivery) return
+  await orderApi.dispatchToDelivery(orderId, delivery.id)
+  uni.showToast({ title: '已派单给配送员', icon: 'success' })
+  fetchOrders()
+}
+
+async function selectDispatchStaff(role: 'maker' | 'delivery') {
+  const roleLabel = role === 'maker' ? '制作员' : '配送员'
+  const list = await userApi.dispatchStaff(role)
+  if (!list.length) {
+    uni.showToast({ title: `暂无可用${roleLabel}`, icon: 'none' })
+    return null
+  }
+
+  return new Promise<any>((resolve) => {
+    const itemList = list.map((item: any) => item.phone ? `${item.realName} (${item.phone})` : item.realName)
+    uni.showActionSheet({
+      itemList,
+      success: (res: any) => resolve(list[res.tapIndex]),
+      fail: () => resolve(null),
+    })
   })
 }
 
@@ -141,20 +193,76 @@ async function handleMakerComplete(id: number) { await orderApi.makerComplete(id
 async function handleDeliveryStart(id: number) { await orderApi.deliveryStart(id); fetchOrders() }
 async function handleDeliveryComplete(id: number) { await orderApi.deliveryComplete(id); fetchOrders() }
 
-function addManualItem() { manualForm.value.items.push({ productId: '', quantity: 1 }) }
+function addManualItem() { manualForm.value.items.push({ productId: 0, productName: '', price: 0, quantity: 1 }) }
 function removeManualItem(i: number) { manualForm.value.items.splice(i, 1) }
 
+function selectMerchant() {
+  if (!merchants.value.length) {
+    uni.showToast({ title: '暂无可选商户', icon: 'none' })
+    return
+  }
+  uni.showActionSheet({
+    itemList: merchants.value.map((item: any) => item.phone ? `${item.realName} (${item.phone})` : item.realName),
+    success: (res: any) => { selectedMerchant.value = merchants.value[res.tapIndex] },
+  })
+}
+
+function selectProduct(index: number) {
+  if (!products.value.length) {
+    uni.showToast({ title: '暂无可选商品', icon: 'none' })
+    return
+  }
+  uni.showActionSheet({
+    itemList: products.value.map((item: any) => `${item.name} ¥${Number(item.price).toFixed(2)}`),
+    success: (res: any) => {
+      const product = products.value[res.tapIndex]
+      manualForm.value.items[index] = {
+        ...manualForm.value.items[index],
+        productId: product.id,
+        productName: product.name,
+        price: Number(product.price),
+      }
+    },
+  })
+}
+
 async function handleManualCreate() {
+  if (!selectedMerchant.value) {
+    uni.showToast({ title: '请选择商户', icon: 'none' })
+    return
+  }
   const items = manualForm.value.items.map((i: any) => ({
     productId: +i.productId, quantity: +i.quantity,
   }))
-  await orderApi.manualCreate({ items, merchantId: +manualForm.value.merchantId })
+  if (items.some((item: any) => !item.productId || !item.quantity || item.quantity <= 0)) {
+    uni.showToast({ title: '请选择商品并填写数量', icon: 'none' })
+    return
+  }
+  await orderApi.manualCreate({
+    items,
+    merchantId: selectedMerchant.value.id,
+    receiverName: manualForm.value.receiverName,
+    receiverPhone: manualForm.value.receiverPhone,
+    receiverAddress: manualForm.value.receiverAddress,
+    note: manualForm.value.note,
+  })
   uni.showToast({ title: '录单成功', icon: 'success' })
   showManualOrder.value = false
+  selectedMerchant.value = null
+  manualForm.value = {
+    items: [{ productId: 0, productName: '', price: 0, quantity: 1 }],
+    receiverName: '',
+    receiverPhone: '',
+    receiverAddress: '',
+    note: '',
+  }
   fetchOrders()
 }
 
-onShow(fetchOrders)
+onShow(() => {
+  fetchOrders()
+  fetchManualOptions()
+})
 </script>
 
 <style scoped>
@@ -175,8 +283,13 @@ onShow(fetchOrders)
 .modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 999; }
 .modal-content { width: 340px; background: #fff; border-radius: 12px; padding: 20px; }
 .form-input { border: 1px solid #eee; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 14px; }
+.form-textarea { border: 1px solid #eee; border-radius: 8px; padding: 8px 12px; min-height: 70px; width: 100%; box-sizing: border-box; font-size: 14px; }
 .manual-items { margin-top: 10px; }
 .manual-item { display: flex; align-items: center; margin-bottom: 8px; }
 .manual-item input { border: 1px solid #eee; border-radius: 4px; padding: 4px 8px; font-size: 13px; }
+.selector-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 14px; color: #333; }
+.selector-arrow { color: #999; font-size: 20px; }
+.product-picker { flex: 1; border: 1px solid #eee; border-radius: 4px; padding: 6px 8px; font-size: 13px; color: #333; min-height: 20px; }
+.manual-total { text-align: right; color: #f56c6c; font-weight: 700; margin: 8px 0 12px; font-size: 14px; }
 .small-btn { font-size: 12px; padding: 6px; background: #f0f0f0; border: none; border-radius: 4px; }
 </style>

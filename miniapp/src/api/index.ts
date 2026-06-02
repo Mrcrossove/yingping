@@ -17,6 +17,11 @@ export const productApi = {
   detail: (id: number) => get(`/products/${id}`),
 }
 
+export const userApi = {
+  dispatchStaff: (role: 'maker' | 'delivery') => get('/users/dispatch-staff', { role }),
+  merchants: (params?: any) => get('/users/merchants', params),
+}
+
 export const bannerApi = {
   list: () => get('/banners/public'),
 }
@@ -32,7 +37,21 @@ export const orderApi = {
   makerComplete: (id: number) => post(`/orders/${id}/maker-complete`),
   deliveryStart: (id: number) => post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => post(`/orders/${id}/delivery-complete`),
+  cancel: (id: number) => post(`/orders/${id}/cancel`),
   manualCreate: (data: any) => post('/orders/manual', data),
+}
+
+export const addressApi = {
+  list: () => get('/addresses'),
+  create: (data: any) => post('/addresses', data),
+  update: (id: number, data: any) => put(`/addresses/${id}`, data),
+  remove: (id: number) => del(`/addresses/${id}`),
+  setDefault: (id: number) => post(`/addresses/${id}/default`),
+}
+
+export const paymentApi = {
+  create: (orderId: number) => post(`/payments/create/${orderId}`),
+  jsapi: (orderId: number, openid: string) => post(`/payments/jsapi/${orderId}`, { openid }),
 }
 
 export const earningApi = {
@@ -50,4 +69,6 @@ export const promotionApi = {
   bindMerchant: (code: string) => post('/promotion/bind', { code }),
   wxacode: () => get('/promotion/wxacode'),
   commissionDetails: (params?: any) => get('/promotion/commission-details', params),
+  uploadMerchant: (data: any) => post('/promotion/upload-merchant', data),
+  myMerchantLeads: (params?: any) => get('/promotion/my-merchant-leads', params),
 }

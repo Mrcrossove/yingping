@@ -25,18 +25,18 @@
     <!-- Tab 2: 分润记录 -->
     <view v-if="currentTab === 'records'">
       <view class="section-title">分润记录</view>
-      <view v-for="r in commissionRecords" :key="r.id" class="record-item">
+      <view v-for="r in commissionItems" :key="r.id" class="record-item">
         <view class="ri-left">
-          <text class="ri-merchant">🏪 {{ r.merchantName }}</text>
+          <text class="ri-merchant">{{ r.merchantName }}</text>
           <text class="ri-order">{{ r.orderNo }}</text>
-          <text class="ri-date">{{ r.date }}</text>
+          <text class="ri-date">{{ formatDate(r.createdAt) }}</text>
         </view>
         <view class="ri-right">
-          <text class="ri-amount">+¥{{ r.amount }}</text>
-          <text class="ri-status">{{ r.status }}</text>
+          <text class="ri-amount">+¥{{ Number(r.amount).toFixed(2) }}</text>
+          <text class="ri-status">{{ earningStatusMap[r.status] || r.status }}</text>
         </view>
       </view>
-      <view v-if="commissionRecords.length === 0" class="empty">暂无分润记录</view>
+      <view v-if="commissionItems.length === 0" class="empty">暂无分润记录</view>
     </view>
 
     <!-- Tab 3: 上传商家 -->
@@ -46,7 +46,19 @@
         <input v-model="merchantForm.name" placeholder="商家名称" class="form-input" />
         <input v-model="merchantForm.phone" placeholder="商家电话" class="form-input" />
         <input v-model="merchantForm.address" placeholder="商家地址" class="form-input" />
-        <button class="submit-btn" @click="handleUpload">提交</button>
+        <textarea v-model="merchantForm.remark" placeholder="备注 (选填)" class="form-textarea" />
+        <button class="submit-btn" :disabled="submittingLead" @click="handleUpload">{{ submittingLead ? '提交中...' : '提交' }}</button>
+      </view>
+      <view class="form-card lead-list">
+        <text class="form-title">已上传商家</text>
+        <view v-for="lead in merchantLeads" :key="lead.id" class="lead-item">
+          <view>
+            <text class="lead-name">{{ lead.merchantName }}</text>
+            <text class="lead-meta">{{ lead.phone }} {{ lead.address || '' }}</text>
+          </view>
+          <text class="lead-status">{{ leadStatusMap[lead.status] || lead.status }}</text>
+        </view>
+        <view v-if="merchantLeads.length === 0" class="empty small">暂无上传记录</view>
       </view>
     </view>
   </view>
@@ -61,7 +73,9 @@ const currentTab = ref('code')
 const myCode = ref<any>(null)
 const qrImage = ref('')
 const commissionItems = ref<any[]>([])
-const merchantForm = reactive({ name: '', phone: '', address: '' })
+const merchantLeads = ref<any[]>([])
+const submittingLead = ref(false)
+const merchantForm = reactive({ name: '', phone: '', address: '', remark: '' })
 
 const tabs = [
   { key: 'code', label: '推广码' },
@@ -69,10 +83,18 @@ const tabs = [
   { key: 'upload', label: '上传商家' },
 ]
 
-const commissionRecords = ref([
-  { id: 1, merchantName: '喜茶（万达店）', orderNo: 'BO20260530001', date: '2026-05-30', amount: 28.5, status: '已结算' },
-  { id: 2, merchantName: '奈雪（万象城）', orderNo: 'BO20260530002', date: '2026-05-30', amount: 15.0, status: '待结算' },
-])
+const earningStatusMap: Record<string, string> = {
+  pending_settle: '待结算',
+  settled: '已结算',
+  withdrawn: '已提现',
+}
+
+const leadStatusMap: Record<string, string> = {
+  pending: '待跟进',
+  followed: '已跟进',
+  converted: '已转化',
+  rejected: '已拒绝',
+}
 
 async function fetchCode() {
   try {
@@ -82,21 +104,63 @@ async function fetchCode() {
   } catch { myCode.value = null }
 }
 
+async function fetchCommissionDetails() {
+  try {
+    const data = await promotionApi.commissionDetails({ pageSize: 50 })
+    commissionItems.value = data.list || []
+  } catch {
+    commissionItems.value = []
+  }
+}
+
+async function fetchMerchantLeads() {
+  try {
+    const data = await promotionApi.myMerchantLeads({ pageSize: 50 })
+    merchantLeads.value = data.list || []
+  } catch {
+    merchantLeads.value = []
+  }
+}
+
 async function handleGenerate() {
   myCode.value = await promotionApi.generateCode()
   uni.showToast({ title: '推广码已生成', icon: 'success' })
 }
 
-function handleUpload() {
+async function handleUpload() {
   if (!merchantForm.name || !merchantForm.phone) {
     uni.showToast({ title: '请填写商家名称和电话', icon: 'none' })
     return
   }
-  uni.showToast({ title: '商家信息已提交', icon: 'success' })
-  merchantForm.name = ''; merchantForm.phone = ''; merchantForm.address = ''
+  submittingLead.value = true
+  try {
+    await promotionApi.uploadMerchant({
+      name: merchantForm.name,
+      phone: merchantForm.phone,
+      address: merchantForm.address,
+      remark: merchantForm.remark,
+    })
+    uni.showToast({ title: '商家信息已提交', icon: 'success' })
+    merchantForm.name = ''
+    merchantForm.phone = ''
+    merchantForm.address = ''
+    merchantForm.remark = ''
+    fetchMerchantLeads()
+  } finally {
+    submittingLead.value = false
+  }
 }
 
-onShow(fetchCode)
+function formatDate(value: string) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+onShow(() => {
+  fetchCode()
+  fetchCommissionDetails()
+  fetchMerchantLeads()
+})
 </script>
 
 <style scoped>
@@ -124,6 +188,14 @@ onShow(fetchCode)
 .form-card { background: #fff; border-radius: 12px; padding: 20px; }
 .form-title { font-size: 16px; font-weight: bold; display: block; margin-bottom: 12px; }
 .form-input { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; }
+.form-textarea { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; min-height: 72px; width: 100%; box-sizing: border-box; }
 .submit-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; }
+.submit-btn[disabled] { opacity: 0.6; }
+.lead-list { margin-top: 10px; }
+.lead-item { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f4f4f4; }
+.lead-name { display: block; font-size: 14px; font-weight: 600; color: #333; }
+.lead-meta { display: block; font-size: 12px; color: #999; margin-top: 4px; }
+.lead-status { font-size: 12px; color: #409EFF; white-space: nowrap; }
 .empty { text-align: center; padding: 40px; color: #999; }
+.empty.small { padding: 20px; font-size: 13px; }
 </style>

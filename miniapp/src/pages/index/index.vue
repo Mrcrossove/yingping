@@ -3,12 +3,8 @@
     <!-- 顶部：商户信息 + 扫码绑定 -->
     <view class="header-bar">
       <view class="merchant-info">
-        <text class="merchant-name">喜茶（万达店）</text>
-        <text class="merchant-tag">VIP商户</text>
-      </view>
-      <view class="header-actions">
-        <text class="scan-btn" @click="showRoleSwitcher = true">🔄 角色</text>
-        <text class="scan-btn">📷</text>
+        <text class="merchant-name">饮品下单</text>
+        <text class="merchant-tag">商品订购</text>
       </view>
     </view>
 
@@ -74,19 +70,9 @@
     </view>
 
     <!-- 业务员专属：代客录单入口 -->
-    <view class="agent-entry" v-if="appStore.currentRole === 'salesperson'" @click="goManualOrder">
+    <view class="agent-entry" v-if="userStore.user?.role === 'salesperson'" @click="goManualOrder">
       <text class="agent-icon">📝</text>
       <text class="agent-text">代客录单</text>
-    </view>
-
-    <!-- 角色切换调试面板 (开发专用) -->
-    <view v-if="showRoleSwitcher" class="modal-mask" @click="showRoleSwitcher = false">
-      <view class="role-sheet" @click.stop>
-        <text class="sheet-title">切换角色预览</text>
-        <view v-for="r in roles" :key="r.value" class="role-option"
-          :class="{ selected: appStore.currentRole === r.value }"
-          @click="appStore.switchRole(r.value); showRoleSwitcher = false">{{ r.label }}</view>
-      </view>
     </view>
   </view>
 </template>
@@ -94,34 +80,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { mockCategories, mockProducts, type Product } from '@/mock/index'
-import { useAppStore } from '@/stores/app'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { bannerApi, categoryApi, productApi } from '@/api/index'
 import { API_BASE_URL } from '@/config'
 import { onLoad } from '@dcloudio/uni-app'
 
-const appStore = useAppStore()
 const cartStore = useCartStore()
 const userStore = useUserStore()
 const keyword = ref('')
 const currentCategory = ref(0)
 const cart = ref<Record<number, number>>({})
-const showRoleSwitcher = ref(false)
 const banners = ref<any[]>([])
 const remoteCategories = ref<any[]>([])
 const remoteProducts = ref<Product[]>([])
 
 const categories = computed(() => remoteCategories.value.length ? remoteCategories.value : mockCategories)
-const roles = [
-  { value: 'merchant' as const, label: '🔵 商户视角' },
-  { value: 'salesperson' as const, label: '🟢 业务员视角' },
-  { value: 'maker' as const, label: '🟡 制作员视角' },
-  { value: 'delivery' as const, label: '🟠 配送员视角' },
-  { value: 'promoter' as const, label: '🟣 推广员视角' },
-  { value: 'boss' as const, label: '🔴 老板/管理员' },
-]
-
 const filteredProducts = computed(() => {
   let list = remoteProducts.value.length ? remoteProducts.value : mockProducts
   if (currentCategory.value) list = list.filter(p => p.categoryId === currentCategory.value)
@@ -162,6 +136,16 @@ function addToCart(p: Product) {
     uni.showToast({ title: `${p.minOrderQty}${p.unit}起批`, icon: 'none' })
     return
   }
+  cartStore.addItem({
+    productId: p.id,
+    name: p.name,
+    price: p.price,
+    image: p.image,
+    quantity: qty,
+    checked: true,
+  })
+  delete cart.value[p.id]
+  cart.value = { ...cart.value }
   uni.showToast({ title: `已加入 ${qty}${p.unit} ${p.name}`, icon: 'success' })
 }
 function switchCategory(id: number) { currentCategory.value = currentCategory.value === id ? 0 : id }
@@ -221,10 +205,17 @@ function onRefresh() {
     uni.showToast({ title: '刷新成功', icon: 'success' })
   })
 }
-function goCart() { uni.navigateTo({ url: '/pages/cart/cart' }) }
-function goManualOrder() { uni.navigateTo({ url: '/pages/cart/cart?mode=agent' }) }
+function goCart() { uni.switchTab({ url: '/pages/cart/cart' }) }
+function goManualOrder() {
+  uni.setStorageSync('cartMode', 'agent')
+  uni.switchTab({ url: '/pages/cart/cart' })
+}
 
-onLoad((options: any) => userStore.capturePromoterCode({ query: options }))
+onLoad((options: any) => {
+  userStore.capturePromoterCode({ query: options })
+  const categoryId = Number(options?.categoryId)
+  if (categoryId) currentCategory.value = categoryId
+})
 onMounted(() => {
   fetchBanners()
   fetchCategories()

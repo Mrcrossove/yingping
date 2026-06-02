@@ -16,6 +16,9 @@ class RegisterDto {
   @IsOptional() @IsIn(['merchant']) role?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() promoterCode?: string;
+  @IsOptional() @IsString() shopAddress?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() licenseImage?: string;
 }
 
 @Controller('auth')

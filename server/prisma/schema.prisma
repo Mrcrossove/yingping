@@ -31,6 +31,8 @@ model User {
   promotionCodes      PromotionCode[]
   merchantBindings    MerchantBinding[]  @relation("MbMerchant")
   promoterBindings    MerchantBinding[]  @relation("MbPromoter")
+  merchantProfile      MerchantProfile?
+  promoterMerchantLeads PromoterMerchantLead[]
   notifications      Notification[]
   addresses           Address[]
   reviews             Review[]
@@ -131,6 +133,10 @@ model Order {
   totalAmount    Decimal     @map("total_amount") @db.Decimal(10, 2)
   status         OrderStatus @default(pending)
   note           String?     @db.Text
+  addressId      Int?        @map("address_id")
+  receiverName   String?     @map("receiver_name") @db.VarChar(30)
+  receiverPhone  String?     @map("receiver_phone") @db.VarChar(20)
+  receiverAddress String?    @map("receiver_address") @db.VarChar(500)
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -273,6 +279,48 @@ model MerchantBinding {
   promoter User @relation("MbPromoter", fields: [promoterId], references: [id])
 
   @@map("merchant_bindings")
+}
+
+model MerchantProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  shopName     String?  @map("shop_name") @db.VarChar(100)
+  shopAddress  String?  @map("shop_address") @db.VarChar(300)
+  description  String?  @db.Text
+  licenseImage String?  @map("license_image") @db.VarChar(500)
+  contactName  String?  @map("contact_name") @db.VarChar(50)
+  contactPhone String?  @map("contact_phone") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("merchant_profiles")
+}
+
+model PromoterMerchantLead {
+  id           Int                @id @default(autoincrement())
+  promoterId   Int                @map("promoter_id")
+  merchantName String             @map("merchant_name") @db.VarChar(100)
+  contactName  String?            @map("contact_name") @db.VarChar(50)
+  phone        String             @db.VarChar(20)
+  address      String?            @db.VarChar(300)
+  remark       String?            @db.VarChar(500)
+  status       MerchantLeadStatus @default(pending)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  promoter User @relation(fields: [promoterId], references: [id])
+
+  @@unique([promoterId, phone])
+  @@map("promoter_merchant_leads")
+}
+
+enum MerchantLeadStatus {
+  pending
+  followed
+  converted
+  rejected
 }
 
 model Notification {

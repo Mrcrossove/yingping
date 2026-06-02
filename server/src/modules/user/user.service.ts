@@ -23,7 +23,17 @@ export class UserService {
         where,
         skip: (page - 1) * pageSize,
         take: +pageSize,
-        select: { id: true, username: true, realName: true, role: true, phone: true, avatar: true, status: true, createdAt: true },
+        select: {
+          id: true,
+          username: true,
+          realName: true,
+          role: true,
+          phone: true,
+          avatar: true,
+          status: true,
+          createdAt: true,
+          merchantProfile: true,
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.user.count({ where }),
@@ -34,10 +44,63 @@ export class UserService {
   async findOne(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, username: true, realName: true, role: true, phone: true, avatar: true, status: true, createdAt: true },
+      select: {
+        id: true,
+        username: true,
+        realName: true,
+        role: true,
+        phone: true,
+        avatar: true,
+        status: true,
+        createdAt: true,
+        merchantProfile: true,
+      },
     });
     if (!user) throw new NotFoundException('用户不存在');
     return user;
+  }
+
+  async getDispatchStaff(role: string) {
+    if (!['maker', 'delivery'].includes(role)) {
+      throw new BadRequestException('员工角色不正确');
+    }
+
+    return this.prisma.user.findMany({
+      where: { role: role as any, status: 1 },
+      select: { id: true, realName: true, phone: true, role: true },
+      orderBy: { id: 'desc' },
+    });
+  }
+
+  async getMerchants(query: { page?: number; pageSize?: number; keyword?: string }) {
+    const { page = 1, pageSize = 50, keyword } = query;
+    const where: any = { role: 'merchant', status: 1 };
+    if (keyword) {
+      where.OR = [
+        { realName: { contains: keyword } },
+        { phone: { contains: keyword } },
+        { username: { contains: keyword } },
+      ];
+    }
+
+    const [list, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: +pageSize,
+        select: {
+          id: true,
+          username: true,
+          realName: true,
+          phone: true,
+          status: true,
+          merchantProfile: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { list, total, page, pageSize };
   }
 
   async create(data: { username: string; password: string; realName: string; role: string; phone?: string }, operator: any) {

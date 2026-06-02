@@ -92,14 +92,14 @@ export class OrderController {
   }
 
   @Post(':id/cancel')
-  @Roles('admin', 'boss', 'salesperson')
+  @Roles('merchant', 'admin', 'boss', 'salesperson')
   async cancel(@Param('id') id: string, @Request() req) {
-    const data = await this.orderService.cancel(+id, req.user.id);
+    const data = await this.orderService.cancel(+id, req.user);
     return ApiResult.success(data, '订单已取消');
   }
 
   @Post('manual')
-  @Roles('salesperson')
+  @Roles('salesperson', 'admin', 'boss')
   async manualCreate(@Body() body: any, @Request() req) {
     const data = await this.orderService.manualCreate(body, req.user.id);
     return ApiResult.success(data, '手动录单成功');

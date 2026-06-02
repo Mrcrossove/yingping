@@ -12,9 +12,17 @@ export class OrderService {
     private wsGateway: WebsocketGateway,
   ) {}
 
-  async create(dto: { items: { productId: number; quantity: number }[]; note?: string }, merchantId: number) {
+  async create(dto: {
+    items: { productId: number; quantity: number }[];
+    note?: string;
+    addressId?: number;
+    receiverName?: string;
+    receiverPhone?: string;
+    receiverAddress?: string;
+  }, merchantId: number) {
     if (!dto.items?.length) throw new BadRequestException('订单商品不能为空');
     const orderNo = this.generateOrderNo();
+    const addressSnapshot = await this.resolveAddressSnapshot(dto, merchantId);
 
     let totalAmount = new Prisma.Decimal(0);
     const items: { productId: number; quantity: number; price: any }[] = [];
@@ -41,6 +49,7 @@ export class OrderService {
         merchantId,
         totalAmount,
         note: dto.note,
+        ...addressSnapshot,
         status: 'pending',
         items: {
           create: items,
@@ -350,9 +359,11 @@ export class OrderService {
     return updated;
   }
 
-  async cancel(orderId: number, operatorId: number) {
+  async cancel(orderId: number, user: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
+    if (!this.canAccessOrder(order, user)) throw new ForbiddenException('无权取消该订单');
     if (order.status === 'delivered' || order.status === 'completed') throw new BadRequestException('已完成的订单无法取消');
+    if (user.role === 'merchant' && order.status !== 'pending') throw new BadRequestException('订单已接单，无法自行取消');
 
     return this.prisma.order.update({
       where: { id: orderId },
@@ -360,9 +371,9 @@ export class OrderService {
         status: 'cancelled',
         flows: {
           create: {
-            fromRole: 'admin',
+            fromRole: user.role,
             toRole: 'merchant',
-            operatorId,
+            operatorId: user.id,
             action: '取消订单',
           },
         },
@@ -374,7 +385,14 @@ export class OrderService {
     items: { productId: number; quantity: number }[];
     note?: string;
     merchantId: number;
+    receiverName?: string;
+    receiverPhone?: string;
+    receiverAddress?: string;
   }, salespersonId: number) {
+    const merchant = await this.prisma.user.findUnique({ where: { id: +dto.merchantId } });
+    if (!merchant || merchant.role !== 'merchant' || merchant.status !== 1) {
+      throw new BadRequestException('商户不存在或不可下单');
+    }
     const order = await this.create(dto, dto.merchantId);
     await this.acceptOrder(order.id, salespersonId);
     return this.findOne(order.id);
@@ -458,6 +476,41 @@ export class OrderService {
     const date = now.toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `BO${date}${random}`;
+  }
+
+  private async resolveAddressSnapshot(dto: {
+    addressId?: number;
+    receiverName?: string;
+    receiverPhone?: string;
+    receiverAddress?: string;
+  }, merchantId: number) {
+    if (dto.addressId) {
+      const address = await this.prisma.address.findUnique({ where: { id: +dto.addressId } });
+      if (!address || address.userId !== merchantId) throw new BadRequestException('收货地址不存在');
+      return {
+        addressId: address.id,
+        receiverName: address.name,
+        receiverPhone: address.phone,
+        receiverAddress: this.formatAddress(address),
+      };
+    }
+
+    if (dto.receiverName || dto.receiverPhone || dto.receiverAddress) {
+      if (!dto.receiverName || !dto.receiverPhone || !dto.receiverAddress) {
+        throw new BadRequestException('收货信息不完整');
+      }
+      return {
+        receiverName: dto.receiverName,
+        receiverPhone: dto.receiverPhone,
+        receiverAddress: dto.receiverAddress,
+      };
+    }
+
+    return {};
+  }
+
+  private formatAddress(address: any) {
+    return [address.province, address.city, address.district, address.detail].filter(Boolean).join('');
   }
 
   private canAccessOrder(order: any, user: { id: number; role: Role }) {

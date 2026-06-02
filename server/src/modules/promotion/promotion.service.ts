@@ -114,12 +114,6 @@ export class PromotionService {
   async getCommissionDetails(promoterId: number, query: { page?: number; pageSize?: number }) {
     const { page = 1, pageSize = 20 } = query;
 
-    const bindings = await this.prisma.merchantBinding.findMany({
-      where: { promoterId },
-      include: { merchant: { select: { id: true, realName: true } } },
-    });
-    const merchantIds = bindings.map((b) => b.merchantId);
-
     const earnings = await this.prisma.earning.findMany({
       where: { userId: promoterId, role: 'promoter' },
       skip: (page - 1) * pageSize,
@@ -155,7 +149,47 @@ export class PromotionService {
     };
   }
 
-  async uploadMerchant(data: { promoterId: number; name: string; phone: string; address?: string }) {
-    return data;
+  async getMyMerchantLeads(promoterId: number, query: { page?: number; pageSize?: number }) {
+    const { page = 1, pageSize = 20 } = query;
+    const [list, total] = await Promise.all([
+      this.prisma.promoterMerchantLead.findMany({
+        where: { promoterId },
+        skip: (page - 1) * pageSize,
+        take: +pageSize,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.promoterMerchantLead.count({ where: { promoterId } }),
+    ]);
+    return { list, total, page, pageSize };
+  }
+
+  async uploadMerchant(data: {
+    promoterId: number;
+    name?: string;
+    merchantName?: string;
+    contactName?: string;
+    phone: string;
+    address?: string;
+    remark?: string;
+  }) {
+    const merchantName = (data.merchantName || data.name || '').trim();
+    const phone = data.phone?.trim();
+    if (!merchantName || !phone) throw new BadRequestException('商家名称和电话不能为空');
+
+    const existing = await this.prisma.promoterMerchantLead.findUnique({
+      where: { promoterId_phone: { promoterId: data.promoterId, phone } },
+    });
+    if (existing) throw new BadRequestException('该商家电话已提交');
+
+    return this.prisma.promoterMerchantLead.create({
+      data: {
+        promoterId: data.promoterId,
+        merchantName,
+        contactName: data.contactName,
+        phone,
+        address: data.address,
+        remark: data.remark,
+      },
+    });
   }
 }

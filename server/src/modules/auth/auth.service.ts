@@ -67,6 +67,7 @@ export class AuthService {
 
   async register(data: {
     username: string; password: string; realName: string; role?: string; phone?: string; promoterCode?: string;
+    shopAddress?: string; description?: string; licenseImage?: string;
   }) {
     const exists = await this.prisma.user.findUnique({ where: { username: data.username } });
     if (exists) throw new UnauthorizedException('账号已存在');
@@ -74,9 +75,22 @@ export class AuthService {
     const hashed = await bcrypt.hash(data.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        username: data.username, password: hashed,
-        realName: data.realName, role: 'merchant', phone: data.phone,
+        username: data.username,
+        password: hashed,
+        realName: data.realName,
+        role: 'merchant',
+        phone: data.phone,
         status: 2,
+        merchantProfile: {
+          create: {
+            shopName: data.realName,
+            shopAddress: data.shopAddress,
+            description: data.description,
+            licenseImage: data.licenseImage,
+            contactName: data.realName,
+            contactPhone: data.phone,
+          },
+        },
       },
     });
     await this.bindPromoterIfNeeded(user.id, data.promoterCode);

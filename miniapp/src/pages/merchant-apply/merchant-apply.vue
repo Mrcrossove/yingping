@@ -56,7 +56,11 @@ async function handleSubmit() {
   try {
     await userStore.register({
       username: form.username, password: form.password,
-      realName: form.realName, phone: form.phone, role: 'merchant',
+      realName: form.realName,
+      phone: form.phone,
+      role: 'merchant',
+      shopAddress: form.shopAddress,
+      description: form.description,
     })
     uni.showToast({ title: '注册申请已提交，等待审核', icon: 'success', duration: 2000 })
     setTimeout(() => uni.navigateBack(), 2000)

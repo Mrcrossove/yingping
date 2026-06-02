@@ -6,6 +6,12 @@
         <el-table-column prop="realName" label="商户名" width="120" />
         <el-table-column prop="username" label="账号" width="140" />
         <el-table-column prop="phone" label="手机号" width="130" />
+        <el-table-column label="店铺地址" min-width="180">
+          <template #default="{ row }">{{ row.merchantProfile?.shopAddress || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="店铺简介" min-width="180">
+          <template #default="{ row }">{{ row.merchantProfile?.description || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="注册时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
         </el-table-column>

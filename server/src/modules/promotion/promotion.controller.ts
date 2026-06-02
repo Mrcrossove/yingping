@@ -61,6 +61,13 @@ export class PromotionController {
     return ApiResult.success(data);
   }
 
+  @Get('my-merchant-leads')
+  @Roles('promoter')
+  async getMyMerchantLeads(@Request() req, @Query() query: any) {
+    const data = await this.promotionService.getMyMerchantLeads(req.user.id, query);
+    return ApiResult.success(data);
+  }
+
   @Post('upload-merchant')
   @Roles('promoter')
   async uploadMerchant(@Body() body: any, @Request() req) {

@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <!-- 统计卡片 row -->
-    <view class="stats-row" v-if="appStore.currentRole !== 'merchant'">
+    <view class="stats-row" v-if="role !== 'merchant'">
       <view v-for="s in stats" :key="s.label" class="stat-card" :style="{ borderTopColor: s.color }"
         @click="filterStatus = filterStatus === s.status ? '' : s.status">
         <text class="stat-num" :style="{ color: s.color }">{{ s.count }}</text>
@@ -31,7 +31,7 @@
             {{ statusMap[order.status] }}
           </view>
           <!-- 推广员佣金 -->
-          <view class="commission-tag" v-if="appStore.currentRole === 'promoter' && order.commission">
+          <view class="commission-tag" v-if="role === 'promoter' && order.commission">
             预计佣金 ¥{{ order.commission }}
           </view>
         </view>
@@ -45,8 +45,8 @@
         <!-- 商品清单（折叠） -->
         <view class="o-items" v-if="expandedOrderId === order.id">
           <view v-for="(item, i) in order.items" :key="i" class="o-item-row">
-            <text class="oi-name">{{ item.name }}</text>
-            <text class="oi-spec">{{ item.spec }}</text>
+            <text class="oi-name">{{ item.product?.name || item.name }}</text>
+            <text class="oi-spec">{{ item.product?.description || item.spec || '-' }}</text>
             <text class="oi-qty">×{{ item.quantity }}</text>
             <text class="oi-price">¥{{ item.price * item.quantity }}</text>
           </view>
@@ -58,27 +58,25 @@
         <!-- 底部 -->
         <view class="o-footer">
           <view class="o-amount">
-            <text class="o-total">合计 ¥{{ order.totalAmount.toLocaleString() }}</text>
+            <text class="o-total">合计 ¥{{ Number(order.totalAmount).toLocaleString() }}</text>
             <text class="o-note" v-if="order.note">备注: {{ order.note }}</text>
           </view>
           <!-- 角色操作按钮 -->
           <view class="o-actions">
             <!-- 业务员 -->
-            <template v-if="appStore.currentRole === 'salesperson'">
+            <template v-if="role === 'salesperson'">
               <view v-if="order.status === 'pending'" class="btn primary" @click="handleAction(order, 'accept')">确认接单</view>
-              <view v-if="order.status === 'accepted'" class="btn primary" @click="handleAction(order, 'dispatch-maker')">派单给制作员</view>
-              <view v-if="order.status === 'made'" class="btn primary" @click="handleAction(order, 'dispatch-delivery')">分配配送员</view>
             </template>
             <!-- 制作员 -->
-            <template v-if="appStore.currentRole === 'maker'">
+            <template v-if="role === 'maker'">
               <view v-if="order.status === 'making'" class="btn warning" @click="handleAction(order, 'maker-complete')">制作完成</view>
             </template>
             <!-- 配送员 -->
-            <template v-if="appStore.currentRole === 'delivery'">
+            <template v-if="role === 'delivery'">
               <view v-if="order.status === 'delivering'" class="btn success" @click="handleAction(order, 'delivery-done')">确认送达</view>
             </template>
             <!-- 商户 -->
-            <template v-if="appStore.currentRole === 'merchant'">
+            <template v-if="role === 'merchant'">
               <view v-if="order.status === 'delivered'" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
               <view v-if="order.status === 'pending'" class="btn outline" @click="callPhone(order.salespersonPhone || '')">联系业务员</view>
             </template>
@@ -104,20 +102,27 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { mockOrders, statusMap, statusColorMap } from '@/mock/index'
+import { onShow } from '@dcloudio/uni-app'
+import { statusMap, statusColorMap } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
+import { useUserStore } from '@/stores/user'
+import { orderApi } from '@/api/index'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+const role = computed(() => userStore.user?.role || appStore.currentRole)
 const filterStatus = ref('')
 const expandedOrderId = ref<number | null>(null)
 const confirmDialog = reactive({ show: false, title: '', desc: '', orderId: 0, action: '' })
 const confirmCallback = ref<(() => void) | null>(null)
+const orders = ref<any[]>([])
+const loading = ref(false)
 
 const tabs = statusMap
 
 const stats = computed(() => {
   const counts: Record<string, number> = {}
-  mockOrders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1 })
+  orders.value.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1 })
   return [
     { label: '待接单', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
     { label: '制作中', count: counts.making || 0, color: '#67C23A', status: 'making' },
@@ -127,13 +132,34 @@ const stats = computed(() => {
 })
 
 const filteredOrders = computed(() => {
-  if (filterStatus.value) return mockOrders.filter(o => o.status === filterStatus.value)
-  return mockOrders
+  if (filterStatus.value) return orders.value.filter(o => o.status === filterStatus.value)
+  return orders.value
 })
+
+async function fetchOrders() {
+  loading.value = true
+  try {
+    const data = await orderApi.list({ pageSize: 50 })
+    orders.value = (data.list || []).map((order: any) => ({
+      ...order,
+      merchantName: order.merchant?.realName || '-',
+      merchantPhone: order.merchant?.phone || '',
+      salespersonPhone: order.salesperson?.phone || '',
+      createdAt: new Date(order.createdAt).toLocaleString(),
+    }))
+  } catch {
+    orders.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 function toggleExpand(id: number) { expandedOrderId.value = expandedOrderId.value === id ? null : id }
 function loadMore() {}
-function callPhone(phone: string) { uni.makePhoneCall({ phoneNumber: phone }) }
+function callPhone(phone: string) {
+  if (!phone) return
+  uni.makePhoneCall({ phoneNumber: phone })
+}
 
 function handleAction(order: any, action: string) {
   const titles: Record<string, string> = {
@@ -142,13 +168,30 @@ function handleAction(order: any, action: string) {
   }
   confirmDialog.show = true
   confirmDialog.title = titles[action] || action
-  confirmDialog.desc = `订单 ${order.orderNo} — ${order.merchantName}\n金额 ¥${order.totalAmount}`
+  confirmDialog.desc = `订单 ${order.orderNo} — ${order.merchantName}\n金额 ¥${Number(order.totalAmount).toFixed(2)}`
   confirmDialog.orderId = order.id
   confirmDialog.action = action
-  confirmCallback.value = () => { uni.showToast({ title: '操作成功（Mock）', icon: 'success' }); confirmDialog.show = false }
+  confirmCallback.value = async () => {
+    if (action === 'accept') await orderApi.accept(order.id)
+    else if (action === 'maker-complete') await orderApi.makerComplete(order.id)
+    else if (action === 'delivery-done') await orderApi.deliveryComplete(order.id)
+    else if (action === 'reorder') {
+      uni.switchTab({ url: '/pages/index/index' })
+      confirmDialog.show = false
+      return
+    }
+    uni.showToast({ title: '操作成功', icon: 'success' })
+    confirmDialog.show = false
+    fetchOrders()
+  }
 }
 
 function doConfirm() { confirmCallback.value?.() }
+
+onShow(() => {
+  userStore.checkLogin()
+  fetchOrders()
+})
 </script>
 
 <style scoped>
