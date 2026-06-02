@@ -14,6 +14,12 @@
         </div>
       </template>
       <el-table :data="products" v-loading="loading" stripe>
+        <el-table-column label="图片" width="90">
+          <template #default="{ row }">
+            <img v-if="row.image" class="product-thumb" :src="imageUrl(row.image)" />
+            <div v-else class="product-thumb empty">无图</div>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="商品名称" />
         <el-table-column prop="category.name" label="分类" width="120" />
         <el-table-column prop="price" label="单价" width="100">
@@ -47,6 +53,19 @@
         </el-form-item>
         <el-form-item label="单价" prop="price">
           <el-input-number v-model="productForm.price" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="商品图片">
+          <el-upload
+            class="product-uploader"
+            action="#"
+            :show-file-list="false"
+            :http-request="handleImageUpload"
+            accept="image/*"
+          >
+            <img v-if="productForm.image" class="product-preview" :src="imageUrl(productForm.image)" />
+            <div v-else class="upload-placeholder">点击上传商品图片</div>
+          </el-upload>
+          <div class="upload-tip">建议 800x800，单张不超过 5MB，支持 jpg/png/webp/gif。</div>
         </el-form-item>
         <el-form-item label="制作提成(元)">
           <el-input-number v-model="productForm.makerRate" :min="0" :precision="2" style="width: 100%" />
@@ -92,7 +111,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { productApi, categoryApi } from '@/api/index'
+import { productApi, categoryApi, fileApi } from '@/api/index'
+import { UPLOADS_BASE_URL } from '@/config'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -108,6 +128,12 @@ const productRules: FormRules = {
   name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
   price: [{ required: true, message: '请输入商品单价', trigger: 'change' }]
+}
+
+function imageUrl(url: string) {
+  if (!url) return ''
+  if (/^https?:\/\//.test(url)) return url
+  return UPLOADS_BASE_URL + url
 }
 
 async function fetchProducts() {
@@ -155,6 +181,12 @@ async function handleSaveProduct() {
   }
 }
 
+async function handleImageUpload(options: any) {
+  const data = await fileApi.upload(options.file)
+  productForm.value.image = data.url
+  ElMessage.success('图片上传成功')
+}
+
 function buildProductPayload() {
   const form = productForm.value
   return {
@@ -196,3 +228,50 @@ async function handleDeleteCategory(id: number) {
 
 onMounted(() => { fetchProducts(); fetchCategories() })
 </script>
+
+<style scoped>
+.product-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ebeef5;
+  background: #f5f7fa;
+  display: block;
+}
+.product-thumb.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 12px;
+}
+.product-uploader {
+  width: 100%;
+}
+.product-preview {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  border: 1px solid #dcdfe6;
+}
+.upload-placeholder {
+  width: 150px;
+  height: 150px;
+  border: 1px dashed #c0c4cc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background: #fafafa;
+}
+.upload-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+</style>

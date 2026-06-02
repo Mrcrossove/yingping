@@ -35,7 +35,8 @@
       <view v-for="p in filteredProducts" :key="p.id" class="product-card">
         <!-- 商品图 -->
         <view class="p-image">
-          <view class="img-placeholder">{{ p.name[0] }}</view>
+          <image v-if="p.image" class="product-image" :src="imageUrl(p.image)" mode="aspectFill" />
+          <view v-else class="img-placeholder">{{ p.name[0] }}</view>
           <view class="spec-tag">{{ p.spec }}</view>
         </view>
         <!-- 商品信息 -->
@@ -96,7 +97,7 @@ import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useAppStore } from '@/stores/app'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
-import { bannerApi } from '@/api/index'
+import { bannerApi, categoryApi, productApi } from '@/api/index'
 import { API_BASE_URL } from '@/config'
 import { onLoad } from '@dcloudio/uni-app'
 
@@ -108,8 +109,10 @@ const currentCategory = ref(0)
 const cart = ref<Record<number, number>>({})
 const showRoleSwitcher = ref(false)
 const banners = ref<any[]>([])
+const remoteCategories = ref<any[]>([])
+const remoteProducts = ref<Product[]>([])
 
-const categories = computed(() => mockCategories)
+const categories = computed(() => remoteCategories.value.length ? remoteCategories.value : mockCategories)
 const roles = [
   { value: 'merchant' as const, label: '🔵 商户视角' },
   { value: 'salesperson' as const, label: '🟢 业务员视角' },
@@ -120,7 +123,7 @@ const roles = [
 ]
 
 const filteredProducts = computed(() => {
-  let list = mockProducts
+  let list = remoteProducts.value.length ? remoteProducts.value : mockProducts
   if (currentCategory.value) list = list.filter(p => p.categoryId === currentCategory.value)
   if (keyword.value) list = list.filter(p => p.name.includes(keyword.value) || p.categoryName.includes(keyword.value))
   return list
@@ -170,6 +173,39 @@ async function fetchBanners() {
     banners.value = []
   }
 }
+async function fetchCategories() {
+  try {
+    const data = await categoryApi.list()
+    remoteCategories.value = data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      icon: item.icon || '🥤',
+    }))
+  } catch {
+    remoteCategories.value = []
+  }
+}
+async function fetchProducts() {
+  try {
+    const data = await productApi.list({ pageSize: 100, status: 1 })
+    remoteProducts.value = (data.list || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      categoryId: item.categoryId,
+      categoryName: item.category?.name || '',
+      image: item.image || '',
+      price: Number(item.price || 0),
+      unit: item.unit || '杯',
+      spec: item.description || item.unit || '标准规格',
+      tierPrices: [{ minQty: 1, price: Number(item.price || 0) }],
+      minOrderQty: 1,
+      stock: Number(item.stock || 0),
+      description: item.description || '',
+    }))
+  } catch {
+    remoteProducts.value = []
+  }
+}
 function imageUrl(url: string) {
   if (!url) return ''
   if (/^https?:\/\//.test(url)) return url
@@ -179,12 +215,21 @@ function handleBannerTap(item: any) {
   if (!item.link) return
   if (item.link.startsWith('/pages/')) uni.navigateTo({ url: item.link })
 }
-function onRefresh() { fetchBanners(); uni.showToast({ title: '刷新成功', icon: 'success' }) }
+function onRefresh() {
+  Promise.all([fetchBanners(), fetchCategories(), fetchProducts()]).finally(() => {
+    uni.stopPullDownRefresh()
+    uni.showToast({ title: '刷新成功', icon: 'success' })
+  })
+}
 function goCart() { uni.navigateTo({ url: '/pages/cart/cart' }) }
 function goManualOrder() { uni.navigateTo({ url: '/pages/cart/cart?mode=agent' }) }
 
 onLoad((options: any) => userStore.capturePromoterCode({ query: options }))
-onMounted(fetchBanners)
+onMounted(() => {
+  fetchBanners()
+  fetchCategories()
+  fetchProducts()
+})
 </script>
 
 <style scoped>
@@ -204,6 +249,7 @@ onMounted(fetchBanners)
 .product-list { flex: 1; padding: 8px 12px; box-sizing: border-box; }
 .product-card { background: #fff; border-radius: 10px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: stretch; box-shadow: 0 1px 4px rgba(20, 31, 51, 0.04); }
 .p-image { width: 88px; min-height: 128px; background: #f5f6f8; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.product-image { width: 100%; height: 100%; display: block; }
 .img-placeholder { width: 44px; height: 44px; background: #e8f0fe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #1a73e8; font-weight: bold; }
 .spec-tag { position: absolute; bottom: 6px; left: 6px; right: 6px; background: rgba(0,0,0,0.62); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; }
 .p-body { flex: 1; padding: 9px 10px 9px 10px; display: flex; flex-direction: column; min-width: 0; box-sizing: border-box; }
