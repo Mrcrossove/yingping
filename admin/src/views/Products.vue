@@ -36,16 +36,16 @@
 
     <!-- 商品弹窗 -->
     <el-dialog v-model="productDialogVisible" :title="productForm.id ? '编辑商品' : '新增商品'" width="500px">
-      <el-form :model="productForm" label-width="80px">
-        <el-form-item label="商品名称">
+      <el-form ref="productFormRef" :model="productForm" :rules="productRules" label-width="110px">
+        <el-form-item label="商品名称" prop="name">
           <el-input v-model="productForm.name" />
         </el-form-item>
-        <el-form-item label="所属分类">
-          <el-select v-model="productForm.categoryId" style="width: 100%">
+        <el-form-item label="所属分类" prop="categoryId">
+          <el-select v-model="productForm.categoryId" placeholder="请选择分类" style="width: 100%">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="单价">
+        <el-form-item label="单价" prop="price">
           <el-input-number v-model="productForm.price" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="制作提成(元)">
@@ -66,7 +66,7 @@
       </el-form>
       <template #footer>
         <el-button @click="productDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveProduct">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSaveProduct">保存</el-button>
       </template>
     </el-dialog>
 
@@ -91,16 +91,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { productApi, categoryApi } from '@/api/index'
 
 const loading = ref(false)
+const saving = ref(false)
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
 const filterCategoryId = ref<number | undefined>()
 const productDialogVisible = ref(false)
 const categoryDialogVisible = ref(false)
 const newCategoryName = ref('')
+const productFormRef = ref<FormInstance>()
 const productForm = ref<any>({ name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1 })
+const productRules: FormRules = {
+  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
+  categoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
+  price: [{ required: true, message: '请输入商品单价', trigger: 'change' }]
+}
 
 async function fetchProducts() {
   loading.value = true
@@ -117,20 +125,51 @@ async function fetchCategories() {
 }
 
 function showProductDialog(row?: any) {
-  productForm.value = row ? { ...row } : { name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1 }
+  productForm.value = row
+    ? {
+        ...row,
+        categoryId: row.categoryId ?? row.category?.id ?? null
+      }
+    : { name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1, makerRate: 0, deliveryRate: 0 }
   productDialogVisible.value = true
+  productFormRef.value?.clearValidate()
 }
 
 async function handleSaveProduct() {
-  if (productForm.value.id) {
-    await productApi.update(productForm.value.id, productForm.value)
-    ElMessage.success('更新成功')
-  } else {
-    await productApi.create(productForm.value)
-    ElMessage.success('创建成功')
+  await productFormRef.value?.validate()
+  const payload = buildProductPayload()
+
+  saving.value = true
+  try {
+    if (productForm.value.id) {
+      await productApi.update(productForm.value.id, payload)
+      ElMessage.success('更新成功')
+    } else {
+      await productApi.create(payload)
+      ElMessage.success('创建成功')
+    }
+    productDialogVisible.value = false
+    fetchProducts()
+  } finally {
+    saving.value = false
   }
-  productDialogVisible.value = false
-  fetchProducts()
+}
+
+function buildProductPayload() {
+  const form = productForm.value
+  return {
+    name: form.name,
+    categoryId: Number(form.categoryId),
+    price: Number(form.price),
+    image: form.image || undefined,
+    unit: form.unit || '杯',
+    description: form.description || '',
+    status: Number(form.status ?? 1),
+    stock: form.stock === undefined || form.stock === null || form.stock === '' ? undefined : Number(form.stock),
+    minStock: form.minStock === undefined || form.minStock === null || form.minStock === '' ? undefined : Number(form.minStock),
+    makerRate: form.makerRate === undefined || form.makerRate === null || form.makerRate === '' ? undefined : Number(form.makerRate),
+    deliveryRate: form.deliveryRate === undefined || form.deliveryRate === null || form.deliveryRate === '' ? undefined : Number(form.deliveryRate)
+  }
 }
 
 async function handleDelete(id: number) {
