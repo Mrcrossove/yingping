@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   async findAll(query: { page?: number; pageSize?: number; role?: string; keyword?: string; status?: number }) {
     const { page = 1, pageSize = 20, role, keyword, status } = query;
@@ -160,20 +164,36 @@ export class UserService {
   async approveMerchant(id: number) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || user.role !== 'merchant') throw new NotFoundException('商户不存在');
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: { status: 1 },
       select: { id: true, realName: true, phone: true, status: true },
     });
+    await this.safeNotifyUsers([id], {
+      title: '商户审核已通过',
+      content: '你的商户入驻申请已通过，可以登录使用系统',
+      type: 'merchant',
+    });
+    return updated;
   }
 
   async rejectMerchant(id: number) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || user.role !== 'merchant') throw new NotFoundException('商户不存在');
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: { status: 0 },
       select: { id: true, realName: true, status: true },
     });
+    await this.safeNotifyUsers([id], {
+      title: '商户审核未通过',
+      content: '你的商户入驻申请未通过，请联系管理员',
+      type: 'merchant',
+    });
+    return updated;
+  }
+
+  private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForUsers(userIds, data); } catch {}
   }
 }

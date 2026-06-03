@@ -42,6 +42,13 @@ export const promotionApi = {
   codes: (params?: any) => request.get('/promotion/codes', { params }),
   wxacode: () => request.get('/promotion/wxacode'),
   commissionDetails: (params?: any) => request.get('/promotion/commission-details', { params }),
+  merchantLeads: (params?: any) => request.get('/promotion/merchant-leads', { params }),
+  updateMerchantLeadStatus: (id: number, status: string) =>
+    request.put(`/promotion/merchant-leads/${id}/status`, { status }),
+}
+
+export const paymentApi = {
+  refund: (orderId: number) => request.post(`/payments/refund/${orderId}`),
 }
 
 export const dashboardApi = {

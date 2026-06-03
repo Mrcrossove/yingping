@@ -3,11 +3,14 @@ import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('boss', 'admin')
+@RequirePermission('finance:view')
 export class DashboardController {
   constructor(private dashboardService: DashboardService) {}
 

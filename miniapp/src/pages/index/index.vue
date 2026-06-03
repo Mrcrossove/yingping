@@ -60,6 +60,9 @@
           </view>
         </view>
       </view>
+      <view v-if="!filteredProducts.length" class="empty-products">
+        <text>{{ loadError || '暂无商品' }}</text>
+      </view>
     </scroll-view>
 
     <!-- 底部悬浮购物车 -->
@@ -79,7 +82,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { mockCategories, mockProducts, type Product } from '@/mock/index'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { bannerApi, categoryApi, productApi } from '@/api/index'
@@ -94,10 +96,26 @@ const cart = ref<Record<number, number>>({})
 const banners = ref<any[]>([])
 const remoteCategories = ref<any[]>([])
 const remoteProducts = ref<Product[]>([])
+const loadError = ref('')
 
-const categories = computed(() => remoteCategories.value.length ? remoteCategories.value : mockCategories)
+type Product = {
+  id: number
+  name: string
+  categoryId: number
+  categoryName: string
+  image?: string
+  price: number
+  unit: string
+  spec: string
+  tierPrices: { minQty: number; price: number }[]
+  minOrderQty: number
+  stock: number
+  description?: string
+}
+
+const categories = computed(() => remoteCategories.value)
 const filteredProducts = computed(() => {
-  let list = remoteProducts.value.length ? remoteProducts.value : mockProducts
+  let list = remoteProducts.value
   if (currentCategory.value) list = list.filter(p => p.categoryId === currentCategory.value)
   if (keyword.value) list = list.filter(p => p.name.includes(keyword.value) || p.categoryName.includes(keyword.value))
   return list
@@ -107,7 +125,7 @@ const cartTotalCount = computed(() => Object.values(cart.value).reduce((s, v) =>
 const cartTotal = computed(() => {
   let total = 0
   for (const [id, qty] of Object.entries(cart.value)) {
-    const p = mockProducts.find(x => x.id === +id)
+    const p = remoteProducts.value.find(x => x.id === +id)
     if (p) {
       const tier = [...p.tierPrices].reverse().find(t => qty >= t.minQty)
       total += (tier?.price || p.price) * qty
@@ -172,6 +190,7 @@ async function fetchCategories() {
 async function fetchProducts() {
   try {
     const data = await productApi.list({ pageSize: 100, status: 1 })
+    loadError.value = ''
     remoteProducts.value = (data.list || []).map((item: any) => ({
       id: item.id,
       name: item.name,
@@ -188,6 +207,7 @@ async function fetchProducts() {
     }))
   } catch {
     remoteProducts.value = []
+    loadError.value = '商品加载失败，请下拉刷新'
   }
 }
 function imageUrl(url: string) {
@@ -264,6 +284,7 @@ onMounted(() => {
 .cart-amount { font-size: 17px; font-weight: 700; }
 .agent-entry { position: fixed; bottom: 90px; right: 16px; background: #52c41a; border-radius: 50px; padding: 10px 18px; display: flex; align-items: center; gap: 6px; color: #fff; box-shadow: 0 4px 12px rgba(82,196,26,0.4); font-size: 14px; font-weight: 600; }
 .agent-icon { font-size: 18px; }
+.empty-products { text-align: center; color: #999; padding: 60px 0; font-size: 14px; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: flex-end; }
 .role-sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; }
 .sheet-title { font-size: 16px; font-weight: 700; display: block; margin-bottom: 12px; text-align: center; }

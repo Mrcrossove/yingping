@@ -26,6 +26,13 @@
           <template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template>
         </el-table-column>
         <el-table-column prop="unit" label="单位" width="80" />
+        <el-table-column label="库存" width="120">
+          <template #default="{ row }">
+            <el-tag :type="isLowStock(row) ? 'danger' : 'success'">
+              {{ row.stock ?? 0 }} / 警戒 {{ row.minStock ?? 10 }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '上架' : '下架' }}</el-tag>
@@ -72,6 +79,12 @@
         </el-form-item>
         <el-form-item label="配送提成(元)">
           <el-input-number v-model="productForm.deliveryRate" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="库存">
+          <el-input-number v-model="productForm.stock" :min="0" :precision="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="最低库存">
+          <el-input-number v-model="productForm.minStock" :min="0" :precision="0" style="width: 100%" />
         </el-form-item>
         <el-form-item label="单位">
           <el-input v-model="productForm.unit" placeholder="如：杯、瓶" />
@@ -156,9 +169,13 @@ function showProductDialog(row?: any) {
         ...row,
         categoryId: row.categoryId ?? row.category?.id ?? null
       }
-    : { name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1, makerRate: 0, deliveryRate: 0 }
+    : { name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1, makerRate: 0, deliveryRate: 0, stock: 0, minStock: 10 }
   productDialogVisible.value = true
   productFormRef.value?.clearValidate()
+}
+
+function isLowStock(row: any) {
+  return Number(row.stock || 0) <= Number(row.minStock || 10)
 }
 
 async function handleSaveProduct() {

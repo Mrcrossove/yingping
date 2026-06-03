@@ -54,6 +54,12 @@ export const paymentApi = {
   jsapi: (orderId: number, openid: string) => post(`/payments/jsapi/${orderId}`, { openid }),
 }
 
+export const reviewApi = {
+  create: (data: { orderId: number; rating: number; content?: string }) => post('/reviews', data),
+  byOrder: (orderId: number) => get(`/reviews/order/${orderId}`),
+  my: (params?: any) => get('/reviews/my', params),
+}
+
 export const earningApi = {
   myEarnings: (params?: any) => get('/earnings/my', params),
 }

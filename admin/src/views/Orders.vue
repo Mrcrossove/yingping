@@ -125,6 +125,7 @@ function handleExport() {
   if (!canExport.value) return
   const params: any = {}
   if (filterStatus.value) params.status = filterStatus.value
+  if (keyword.value) params.keyword = keyword.value
   const url = exportApi.orders(params)
   const a = document.createElement('a')
   a.href = url

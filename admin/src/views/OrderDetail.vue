@@ -42,6 +42,19 @@
         </el-timeline-item>
       </el-timeline>
 
+      <h4 style="margin-top: 20px;">订单评价</h4>
+      <el-table :data="reviews" border>
+        <el-table-column label="评分" width="120">
+          <template #default="{ row }">{{ '★'.repeat(row.rating) }}</template>
+        </el-table-column>
+        <el-table-column prop="content" label="评价内容">
+          <template #default="{ row }">{{ row.content || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="评价时间" width="180">
+          <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
+        </el-table-column>
+      </el-table>
+
       <div style="margin-top: 20px; display: flex; gap: 10px;" v-if="canOperate">
         <template v-if="order.status === 'pending'">
           <el-button type="primary" @click="handleAccept">确认接单</el-button>
@@ -81,12 +94,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { orderApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const order = ref<any>(null)
+const reviews = ref<any[]>([])
 const makerId = ref<number | null>(null)
 const deliveryId = ref<number | null>(null)
 const makers = ref<any[]>([])
@@ -110,6 +125,7 @@ async function fetchOrder() {
   loading.value = true
   try {
     order.value = await orderApi.detail(+route.params.id)
+    reviews.value = await request.get(`/reviews/order/${route.params.id}`)
     if (order.value.status === 'accepted') {
       makers.value = (await userApi.list({ role: 'maker', pageSize: 100 })).list
       deliverys.value = (await userApi.list({ role: 'delivery', pageSize: 100 })).list

@@ -32,6 +32,12 @@
         <el-table-column prop="paidAt" label="支付时间" width="170">
           <template #default="{ row }">{{ row.paidAt ? new Date(row.paidAt).toLocaleString() : '-' }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="row.status === 'paid'" type="danger" link @click="handleRefund(row.orderId)">退款</el-button>
+            <span v-else style="color: #909399;">-</span>
+          </template>
+        </el-table-column>
       </el-table>
       <div style="margin-top: 16px; text-align: right;">
         <el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" layout="total, prev, pager, next" @current-change="fetchList" />
@@ -42,7 +48,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import { paymentApi } from '@/api/index'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -62,6 +70,13 @@ async function fetchList() {
     const data = await request.get('/payments', params)
     list.value = data.list; total.value = data.total
   } finally { loading.value = false }
+}
+
+async function handleRefund(orderId: number) {
+  await ElMessageBox.confirm('当前退款只会更新系统状态，不会调用微信原路退款，确定继续？', '提示', { type: 'warning' })
+  await paymentApi.refund(orderId)
+  ElMessage.success('已标记退款')
+  fetchList()
 }
 
 onMounted(fetchList)

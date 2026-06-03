@@ -3,6 +3,8 @@ import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('payments')
@@ -41,16 +43,18 @@ export class PaymentController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('finance:view')
   async getPayments(@Query() query: any) {
     const data = await this.paymentService.getPayments(query);
     return ApiResult.success(data);
   }
 
   @Post('refund/:orderId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('finance:view')
   async refund(@Param('orderId') orderId: string) {
     const data = await this.paymentService.refund(+orderId);
     return ApiResult.success(data, '退款成功');

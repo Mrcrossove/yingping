@@ -38,6 +38,7 @@ export class PermissionService {
       { name: '数据导出', code: 'export:manage', description: '导出Excel报表' },
       { name: '推广管理', code: 'promotion:manage', description: '管理推广码和绑定' },
       { name: '查看财务数据', code: 'finance:view', description: '查看财务收益报表' },
+      { name: '操作日志', code: 'audit:view', description: '查看系统操作日志' },
     ];
     for (const p of defaults) {
       await this.prisma.permission.upsert({

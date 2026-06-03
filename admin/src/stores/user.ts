@@ -10,6 +10,7 @@ interface User {
   phone?: string
   avatar?: string
   status: number
+  permissions?: string[]
 }
 
 export const useUserStore = defineStore('user', () => {

@@ -35,6 +35,28 @@
         </view>
       </view>
 
+      <view v-if="reviews.length > 0" class="section">
+        <text class="section-title">订单评价</text>
+        <view v-for="review in reviews" :key="review.id" class="review-item">
+          <text class="review-rating">{{ '★'.repeat(review.rating) }}</text>
+          <text class="review-content">{{ review.content || '暂无文字评价' }}</text>
+        </view>
+      </view>
+
+      <view v-if="canReview" class="section">
+        <text class="section-title">评价订单</text>
+        <view class="rating-row">
+          <text
+            v-for="star in 5"
+            :key="star"
+            :class="['star', { active: reviewForm.rating >= star }]"
+            @click="reviewForm.rating = star"
+          >★</text>
+        </view>
+        <textarea v-model="reviewForm.content" class="review-input" placeholder="写下本次服务体验 (选填)" />
+        <button class="action-btn primary" @click="handleReview">提交评价</button>
+      </view>
+
       <!-- 员工操作 -->
       <view v-if="canOperate" class="action-bar">
         <button v-if="canMerchantCancel" @click="handleCancel" class="action-btn danger">取消订单</button>
@@ -55,14 +77,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { orderApi } from '@/api/index'
-import { userApi } from '@/api/index'
+import { orderApi, reviewApi, userApi } from '@/api/index'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const order = ref<any>(null)
+const reviews = ref<any[]>([])
+const reviewForm = ref({ rating: 5, content: '' })
 
 const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
@@ -84,15 +107,30 @@ const canPay = computed(() => userStore.user?.role === 'merchant' && order.value
 const canReorder = computed(() => userStore.user?.role === 'merchant' && ['completed', 'delivered'].includes(order.value?.status))
 const canDispatchMaker = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'accepted')
 const canDispatchDelivery = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'made')
+const canReview = computed(() =>
+  userStore.user?.role === 'merchant'
+  && ['completed', 'delivered'].includes(order.value?.status)
+  && reviews.value.length === 0
+)
 
 onLoad(async (options: any) => {
   const id = options.id || options.productId
   if (!id) return
   order.value = await orderApi.detail(+id)
+  await fetchReviews(+id)
 })
 
 async function refreshOrder() {
   order.value = await orderApi.detail(order.value.id)
+  await fetchReviews(order.value.id)
+}
+
+async function fetchReviews(orderId: number) {
+  try {
+    reviews.value = await reviewApi.byOrder(orderId)
+  } catch {
+    reviews.value = []
+  }
 }
 
 async function handleAccept() {
@@ -157,6 +195,17 @@ function handleReorder() {
   uni.switchTab({ url: '/pages/cart/cart' })
 }
 
+async function handleReview() {
+  await reviewApi.create({
+    orderId: order.value.id,
+    rating: reviewForm.value.rating,
+    content: reviewForm.value.content,
+  })
+  uni.showToast({ title: '评价成功', icon: 'success' })
+  reviewForm.value = { rating: 5, content: '' }
+  await fetchReviews(order.value.id)
+}
+
 async function handleMakerStart() {
   await orderApi.makerStart(order.value.id)
   uni.showToast({ title: '开始制作', icon: 'success' })
@@ -200,5 +249,12 @@ async function handleDeliveryComplete() {
 .action-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
 .action-btn.primary { background: #67C23A; }
 .action-btn.danger { background: #f56c6c; }
+.rating-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.star { font-size: 26px; color: #ddd; }
+.star.active { color: #f5a623; }
+.review-input { width: 100%; min-height: 76px; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
+.review-item { padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+.review-rating { color: #f5a623; display: block; font-size: 16px; }
+.review-content { display: block; color: #333; font-size: 14px; margin-top: 4px; }
 .empty { text-align: center; padding: 60px 0; color: #999; }
 </style>

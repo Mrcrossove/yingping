@@ -3,10 +3,12 @@ import { OrderService } from './order.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('orders')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class OrderController {
   constructor(private orderService: OrderService) {}
 
@@ -35,6 +37,7 @@ export class OrderController {
 
   @Post(':id/accept')
   @Roles('salesperson', 'admin', 'boss')
+  @RequirePermission('order:manage')
   async accept(@Param('id') id: string, @Request() req) {
     const data = await this.orderService.acceptOrder(+id, req.user.id);
     return ApiResult.success(data, '接单成功');
@@ -42,6 +45,7 @@ export class OrderController {
 
   @Post(':id/dispatch-maker')
   @Roles('salesperson', 'admin', 'boss')
+  @RequirePermission('order:dispatch')
   async dispatchToMaker(@Param('id') id: string, @Body('makerId') makerId: number, @Request() req) {
     const data = await this.orderService.dispatchToMaker(+id, makerId, req.user.id);
     return ApiResult.success(data, '派单成功');
@@ -50,6 +54,7 @@ export class OrderController {
 
   @Post(':id/dispatch-both')
   @Roles('salesperson', 'admin', 'boss')
+  @RequirePermission('order:dispatch')
   async dispatchBoth(@Param('id') id: string, @Body('makerId') makerId: number, @Body('deliveryId') deliveryId: number, @Request() req) {
     const data = await this.orderService.dispatchBoth(+id, makerId, deliveryId, req.user.id);
     return ApiResult.success(data, '派单成功');
@@ -71,6 +76,7 @@ export class OrderController {
 
   @Post(':id/dispatch-delivery')
   @Roles('salesperson', 'admin', 'boss')
+  @RequirePermission('order:dispatch')
   async dispatchToDelivery(@Param('id') id: string, @Body('deliveryId') deliveryId: number, @Request() req) {
     const data = await this.orderService.dispatchToDelivery(+id, deliveryId, req.user.id);
     return ApiResult.success(data, '派单成功');
@@ -107,6 +113,7 @@ export class OrderController {
 
   @Post('batch-dispatch')
   @Roles('salesperson', 'admin', 'boss')
+  @RequirePermission('order:dispatch')
   async batchDispatch(@Body() body: { orderIds: number[]; makerId: number; deliveryId: number }, @Request() req) {
     const data = await this.orderService.batchDispatch(body.orderIds, body.makerId, body.deliveryId, req.user.id);
     return ApiResult.success(data, '批量派单完成');

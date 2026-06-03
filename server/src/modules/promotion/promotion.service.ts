@@ -163,6 +163,35 @@ export class PromotionService {
     return { list, total, page, pageSize };
   }
 
+  async getMerchantLeads(query: { page?: number; pageSize?: number; promoterId?: number; status?: string }) {
+    const { page = 1, pageSize = 20, promoterId, status } = query;
+    const where: any = {};
+    if (promoterId) where.promoterId = +promoterId;
+    if (status) where.status = status;
+    const [list, total] = await Promise.all([
+      this.prisma.promoterMerchantLead.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: +pageSize,
+        include: { promoter: { select: { id: true, realName: true, phone: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.promoterMerchantLead.count({ where }),
+    ]);
+    return { list, total, page, pageSize };
+  }
+
+  async updateMerchantLeadStatus(id: number, status: string) {
+    if (!['pending', 'followed', 'converted', 'rejected'].includes(status)) {
+      throw new BadRequestException('线索状态不正确');
+    }
+    return this.prisma.promoterMerchantLead.update({
+      where: { id },
+      data: { status: status as any },
+      include: { promoter: { select: { id: true, realName: true, phone: true } } },
+    });
+  }
+
   async uploadMerchant(data: {
     promoterId: number;
     name?: string;

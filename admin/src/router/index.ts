@@ -10,6 +10,11 @@ const router = createRouter({
       component: () => import('@/views/Login.vue'),
     },
     {
+      path: '/403',
+      name: 'Forbidden',
+      component: () => import('@/views/Forbidden.vue'),
+    },
+    {
       path: '/',
       redirect: () => getHomePath(getUserRole()),
     },
@@ -107,6 +112,8 @@ router.beforeEach((to, _from, next) => {
     next('/login')
   } else if (to.path === '/login' && token) {
     next(getHomePath(role))
+  } else if (to.path === '/403') {
+    next()
   } else if (token && !canAccessRoute(to.name, role)) {
     next(getHomePath(role))
   } else {

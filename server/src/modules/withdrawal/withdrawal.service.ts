@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class WithdrawalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   async apply(userId: number, dto: { amount: number; accountType: string; accountInfo: string }) {
     const amount = new Prisma.Decimal(dto.amount || 0);
@@ -15,7 +19,7 @@ export class WithdrawalService {
     if (available <= 0) throw new BadRequestException('没有可提现金额');
     if (amount.greaterThan(available)) throw new BadRequestException(`可提现金额为 ${available}`);
 
-    return this.prisma.withdrawal.create({
+    const withdrawal = await this.prisma.withdrawal.create({
       data: {
         userId,
         amount,
@@ -24,6 +28,12 @@ export class WithdrawalService {
         status: 'pending',
       },
     });
+    await this.safeNotifyRoles(['boss', 'admin'], {
+      title: '有新的提现申请',
+      content: `用户提交提现申请 ¥${Number(amount).toFixed(2)}`,
+      type: 'withdrawal',
+    });
+    return withdrawal;
   }
 
   async findAll(query: { page?: number; pageSize?: number; userId?: number; status?: string }) {
@@ -56,6 +66,11 @@ export class WithdrawalService {
       where: { id },
       data: { status: 'approved', processedAt: new Date() },
     });
+    await this.safeNotifyUsers([withdrawal.userId], {
+      title: '提现申请已通过',
+      content: `提现 ¥${Number(withdrawal.amount).toFixed(2)} 已审核通过`,
+      type: 'withdrawal',
+    });
 
     return result;
   }
@@ -65,10 +80,16 @@ export class WithdrawalService {
     if (!withdrawal) throw new BadRequestException('申请不存在');
     if (withdrawal.status !== 'pending') throw new BadRequestException('只能拒绝待审核申请');
 
-    return this.prisma.withdrawal.update({
+    const result = await this.prisma.withdrawal.update({
       where: { id },
       data: { status: 'rejected', remark, processedAt: new Date() },
     });
+    await this.safeNotifyUsers([withdrawal.userId], {
+      title: '提现申请已拒绝',
+      content: remark || `提现 ¥${Number(withdrawal.amount).toFixed(2)} 已被拒绝`,
+      type: 'withdrawal',
+    });
+    return result;
   }
 
   async findMyWithdrawals(userId: number, query: { page?: number; pageSize?: number }) {
@@ -79,10 +100,16 @@ export class WithdrawalService {
     if (!withdrawal) throw new BadRequestException('申请不存在');
     if (withdrawal.status !== 'approved') throw new BadRequestException('只能标记已通过的申请为已打款');
 
-    return this.prisma.withdrawal.update({
+    const result = await this.prisma.withdrawal.update({
       where: { id },
       data: { status: 'paid', processedAt: new Date() },
     });
+    await this.safeNotifyUsers([withdrawal.userId], {
+      title: '提现已打款',
+      content: `提现 ¥${Number(withdrawal.amount).toFixed(2)} 已标记打款`,
+      type: 'withdrawal',
+    });
+    return result;
   }
 
   async batchApprove(ids: number[]) {
@@ -106,5 +133,13 @@ export class WithdrawalService {
     const earningAmount = Number(earnings._sum.amount || 0);
     const occupiedAmount = Number(withdrawals._sum.amount || 0);
     return Math.max(0, earningAmount - occupiedAmount);
+  }
+
+  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForRoles(roles, data); } catch {}
+  }
+
+  private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForUsers(userIds, data); } catch {}
   }
 }

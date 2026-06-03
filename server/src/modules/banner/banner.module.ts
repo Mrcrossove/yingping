@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Roles } from '../../common/roles.decorator';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,8 +23,9 @@ export class BannerController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async findAll(@Query() query: any) {
     const { page = 1, pageSize = 20 } = query;
     const where: any = {};
@@ -40,8 +43,9 @@ export class BannerController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async create(@Body() body: any) {
     const data = await this.prisma.banner.create({
       data: {
@@ -56,8 +60,9 @@ export class BannerController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const data = await this.prisma.banner.update({
       where: { id: +id },
@@ -73,8 +78,9 @@ export class BannerController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async remove(@Param('id') id: string) {
     await this.prisma.banner.delete({ where: { id: +id } });
     return ApiResult.success({ id: +id }, '删除成功');

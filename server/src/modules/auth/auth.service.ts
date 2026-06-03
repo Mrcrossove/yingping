@@ -3,12 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import axios from 'axios';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private notificationService: NotificationService,
   ) {}
 
   async login(username: string, password: string) {
@@ -20,7 +22,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('账号或密码错误');
 
-    const { password: _, ...userInfo } = user;
+    const userInfo = await this.toUserInfo(user);
     const token = this.signToken(user);
     return { token, user: userInfo };
   }
@@ -60,7 +62,7 @@ export class AuthService {
 
     await this.bindPromoterIfNeeded(user.id, promoterCode);
 
-    const { password: _, ...userInfo } = user;
+    const userInfo = await this.toUserInfo(user);
     const token = this.signToken(user);
     return { token, user: userInfo, isNew: !user.realName };
   }
@@ -94,15 +96,19 @@ export class AuthService {
       },
     });
     await this.bindPromoterIfNeeded(user.id, data.promoterCode);
-    const { password: _, ...userInfo } = user;
+    await this.safeNotifyRoles(['boss', 'admin'], {
+      title: '有新的商户入驻申请',
+      content: `${data.realName} 提交了商户入驻申请`,
+      type: 'merchant',
+    });
+    const userInfo = await this.toUserInfo(user);
     return userInfo;
   }
 
   async getProfile(userId: number) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('用户不存在');
-    const { password: _, ...userInfo } = user;
-    return userInfo;
+    return this.toUserInfo(user);
   }
 
   async bindPhone(userId: number, phone: string) {
@@ -134,5 +140,21 @@ export class AuthService {
     await this.prisma.merchantBinding.create({
       data: { merchantId, promoterId: code.promoterId },
     });
+  }
+
+  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForRoles(roles, data); } catch {}
+  }
+
+  private async toUserInfo(user: any) {
+    const { password: _, ...userInfo } = user;
+    if (user.role === 'boss') return { ...userInfo, permissions: ['*'] };
+    if (user.role !== 'admin') return { ...userInfo, permissions: [] };
+
+    const permissions = await this.prisma.adminPermission.findMany({
+      where: { adminId: user.id },
+      include: { permission: true },
+    });
+    return { ...userInfo, permissions: permissions.map((item) => item.permission.code) };
   }
 }

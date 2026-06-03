@@ -4,10 +4,12 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     PassportModule,
+    NotificationModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'beverage-order-jwt-secret-key-2024',
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },

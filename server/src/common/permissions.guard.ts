@@ -19,26 +19,14 @@ export class PermissionsGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
-    const rolePermissions = await this.prisma.rolePermission.findMany({
-      where: { role: user.role },
-    });
-
     if (user.role === 'boss') return true;
+    if (user.role !== 'admin') return true;
 
-    if (user.role === 'admin') {
-      const ap = await this.prisma.adminPermission.findMany({
-        where: { adminId: user.id },
-        include: { permission: true },
-      });
-      const codes = ap.map((p) => p.permission.code);
-      return requiredPermissions.every((p) => codes.includes(p));
-    }
-
-    const allPermissionIds = rolePermissions.map((rp) => rp.permissionId);
-    const permissions = await this.prisma.permission.findMany({
-      where: { id: { in: allPermissionIds } },
+    const ap = await this.prisma.adminPermission.findMany({
+      where: { adminId: user.id },
+      include: { permission: true },
     });
-    const codes = permissions.map((p) => p.code);
+    const codes = ap.map((p) => p.permission.code);
     return requiredPermissions.every((p) => codes.includes(p));
   }
 }

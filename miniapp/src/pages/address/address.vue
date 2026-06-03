@@ -22,9 +22,9 @@
         <text class="form-title">{{ editingAddr ? '编辑地址' : '新增地址' }}</text>
         <input v-model="form.name" placeholder="收货人姓名" class="form-input" />
         <input v-model="form.phone" placeholder="手机号" class="form-input" />
-        <input v-model="form.province" placeholder="省" class="form-input half" />
-        <input v-model="form.city" placeholder="市" class="form-input half" />
-        <input v-model="form.district" placeholder="区" class="form-input half" />
+        <picker mode="region" :value="regionValue" @change="handleRegionChange">
+          <view class="region-picker">{{ regionText || '请选择省/市/区' }}</view>
+        </picker>
         <input v-model="form.detail" placeholder="详细地址" class="form-input" />
         <view class="form-btns">
           <button class="fb-cancel" @click="showForm = false">取消</button>
@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 
@@ -44,6 +45,8 @@ const addresses = ref<any[]>([])
 const showForm = ref(false)
 const editingAddr = ref<any>(null)
 const form = reactive({ name: '', phone: '', province: '', city: '', district: '', detail: '' })
+const regionValue = computed(() => [form.province, form.city, form.district].filter(Boolean))
+const regionText = computed(() => [form.province, form.city, form.district].filter(Boolean).join(' / '))
 
 async function fetchList() {
   try { addresses.value = await get('/addresses') } catch { addresses.value = [] }
@@ -56,10 +59,17 @@ function editAddr(addr: any) {
 }
 
 async function saveAddr() {
-  if (!form.name || !form.phone || !form.detail) { uni.showToast({ title: '请填写完整信息', icon: 'none' }); return }
+  if (!form.name || !form.phone || !form.province || !form.city || !form.district || !form.detail) { uni.showToast({ title: '请填写完整信息', icon: 'none' }); return }
   if (editingAddr.value) { await put(`/addresses/${editingAddr.value.id}`, form) }
   else { await post('/addresses', form) }
   showForm.value = false; fetchList()
+}
+
+function handleRegionChange(e: any) {
+  const [province, city, district] = e.detail.value
+  form.province = province
+  form.city = city
+  form.district = district
 }
 
 async function delAddr(id: number) {
@@ -90,7 +100,7 @@ onShow(fetchList)
 .form-box { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; max-height: 80vh; overflow-y: auto; }
 .form-title { font-size: 17px; font-weight: 700; display: block; margin-bottom: 16px; text-align: center; }
 .form-input { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; }
-.form-input.half { width: calc(50% - 20px); display: inline-block; margin-right: 8px; }
+.region-picker { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; color: #333; }
 .form-btns { display: flex; gap: 12px; margin-top: 16px; }
 .fb-cancel { flex: 1; background: #f5f5f5; color: #666; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }
 .fb-save { flex: 1; background: #1a73e8; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }

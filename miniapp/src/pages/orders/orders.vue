@@ -103,14 +103,14 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { statusMap, statusColorMap } from '@/mock/index'
-import { useAppStore } from '@/stores/app'
+import { statusMap, statusColorMap } from '@/utils/order-status'
 import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
 import { orderApi } from '@/api/index'
 
-const appStore = useAppStore()
 const userStore = useUserStore()
-const role = computed(() => userStore.user?.role || appStore.currentRole)
+const cartStore = useCartStore()
+const role = computed(() => userStore.user?.role || '')
 const filterStatus = ref('')
 const expandedOrderId = ref<number | null>(null)
 const confirmDialog = reactive({ show: false, title: '', desc: '', orderId: 0, action: '' })
@@ -176,7 +176,17 @@ function handleAction(order: any, action: string) {
     else if (action === 'maker-complete') await orderApi.makerComplete(order.id)
     else if (action === 'delivery-done') await orderApi.deliveryComplete(order.id)
     else if (action === 'reorder') {
-      uni.switchTab({ url: '/pages/index/index' })
+      order.items.forEach((item: any) => {
+        cartStore.addItem({
+          productId: item.productId,
+          name: item.product?.name || item.name || '商品',
+          price: Number(item.price),
+          image: item.product?.image,
+          quantity: item.quantity,
+          checked: true,
+        })
+      })
+      uni.switchTab({ url: '/pages/cart/cart' })
       confirmDialog.show = false
       return
     }

@@ -1,12 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('promotion')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PromotionController {
   constructor(private promotionService: PromotionService) {}
 
@@ -33,6 +35,7 @@ export class PromotionController {
 
   @Get('bindings')
   @Roles('boss', 'admin', 'promoter')
+  @RequirePermission('promotion:manage')
   async findAllBindings(@Query() query: any, @Request() req) {
     if (req.user.role === 'promoter') query.promoterId = req.user.id;
     const data = await this.promotionService.findAllBindings(query);
@@ -41,6 +44,7 @@ export class PromotionController {
 
   @Get('codes')
   @Roles('boss', 'admin', 'promoter')
+  @RequirePermission('promotion:manage')
   async findAllCodes(@Query() query: any, @Request() req) {
     if (req.user.role === 'promoter') query.promoterId = req.user.id;
     const data = await this.promotionService.findAllCodes(query);
@@ -66,6 +70,23 @@ export class PromotionController {
   async getMyMerchantLeads(@Request() req, @Query() query: any) {
     const data = await this.promotionService.getMyMerchantLeads(req.user.id, query);
     return ApiResult.success(data);
+  }
+
+  @Get('merchant-leads')
+  @Roles('boss', 'admin', 'promoter')
+  @RequirePermission('promotion:manage')
+  async getMerchantLeads(@Query() query: any, @Request() req) {
+    if (req.user.role === 'promoter') query.promoterId = req.user.id;
+    const data = await this.promotionService.getMerchantLeads(query);
+    return ApiResult.success(data);
+  }
+
+  @Put('merchant-leads/:id/status')
+  @Roles('boss', 'admin')
+  @RequirePermission('promotion:manage')
+  async updateMerchantLeadStatus(@Param('id') id: string, @Body('status') status: string) {
+    const data = await this.promotionService.updateMerchantLeadStatus(+id, status);
+    return ApiResult.success(data, '状态已更新');
   }
 
   @Post('upload-merchant')

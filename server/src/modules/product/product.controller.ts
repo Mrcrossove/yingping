@@ -3,6 +3,8 @@ import { ProductService } from './product.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
+import { RequirePermission } from '../../common/permissions.decorator';
+import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 
 @Controller('products')
@@ -22,24 +24,27 @@ export class ProductController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async create(@Body() body: any) {
     const data = await this.productService.create(body);
     return ApiResult.success(data, '创建成功');
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const data = await this.productService.update(+id, body);
     return ApiResult.success(data, '更新成功');
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
+  @RequirePermission('product:manage')
   async remove(@Param('id') id: string) {
     const data = await this.productService.remove(+id);
     return ApiResult.success(data, '删除成功');

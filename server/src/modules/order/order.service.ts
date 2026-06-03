@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus, Role } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class OrderService {
@@ -10,6 +11,7 @@ export class OrderService {
     private prisma: PrismaService,
     @Inject(forwardRef(() => WebsocketGateway))
     private wsGateway: WebsocketGateway,
+    private notificationService: NotificationService,
   ) {}
 
   async create(dto: {
@@ -64,6 +66,12 @@ export class OrderService {
         },
       },
       include: { items: { include: { product: true } }, flows: true },
+    });
+
+    await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
+      title: '有新的订单待接单',
+      content: `订单 ${order.orderNo} 金额 ¥${Number(order.totalAmount).toFixed(2)}`,
+      type: 'order',
     });
 
     return order;
@@ -157,6 +165,11 @@ export class OrderService {
         },
       },
     });
+    await this.safeNotifyUsers([order.merchantId], {
+      title: '订单已接单',
+      content: `订单 ${order.orderNo} 已由业务员接单`,
+      type: 'order',
+    });
     return updated;
   }
 
@@ -178,6 +191,11 @@ export class OrderService {
           },
         },
       },
+    });
+    await this.safeNotifyUsers([makerId], {
+      title: '你有新的制作任务',
+      content: `订单 ${order.orderNo} 已派单给你制作`,
+      type: 'order',
     });
     return updated;
   }
@@ -214,6 +232,11 @@ export class OrderService {
 
     this.wsGateway.notifyNewTask(makerId, { orderId, type: 'making' });
     this.wsGateway.notifyNewTask(deliveryId, { orderId, type: 'waiting' });
+    await this.safeNotifyUsers([makerId, deliveryId], {
+      title: '你有新的订单任务',
+      content: `订单 ${order.orderNo} 已派单，请及时处理`,
+      type: 'order',
+    });
 
     return updated;
   }
@@ -264,6 +287,11 @@ export class OrderService {
     });
 
     this.wsGateway.notifyOrderStatusChange(orderId, 'made', '制作已完成，等待配送');
+    await this.safeNotifyUsers([order.salespersonId || 0, order.deliveryId || 0], {
+      title: '订单制作完成',
+      content: `订单 ${order.orderNo} 已制作完成`,
+      type: 'order',
+    });
     return updated;
   }
 
@@ -312,6 +340,11 @@ export class OrderService {
         },
       },
     });
+    await this.safeNotifyUsers([deliveryId], {
+      title: '你有新的配送任务',
+      content: `订单 ${order.orderNo} 已派单给你配送`,
+      type: 'order',
+    });
     return updated;
   }
 
@@ -355,6 +388,13 @@ export class OrderService {
 
     await this.calculateCommissions(orderId);
     this.wsGateway.notifyOrderStatusChange(orderId, 'completed', '订单已完成，收益已结算');
+    if (updated) {
+      await this.safeNotifyUsers([updated.merchantId], {
+        title: '订单已送达',
+        content: `订单 ${updated.orderNo} 已配送完成`,
+        type: 'order',
+      });
+    }
 
     return updated;
   }
@@ -511,6 +551,14 @@ export class OrderService {
 
   private formatAddress(address: any) {
     return [address.province, address.city, address.district, address.detail].filter(Boolean).join('');
+  }
+
+  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForRoles(roles, data); } catch {}
+  }
+
+  private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string }) {
+    try { await this.notificationService.createForUsers(userIds, data); } catch {}
   }
 
   private canAccessOrder(order: any, user: { id: number; role: Role }) {
