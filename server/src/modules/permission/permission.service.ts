@@ -6,6 +6,8 @@ export class PermissionService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
+    const count = await this.prisma.permission.count();
+    if (count === 0) return this.initDefaultPermissions();
     return this.prisma.permission.findMany({ orderBy: { id: 'asc' } });
   }
 

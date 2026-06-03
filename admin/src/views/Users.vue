@@ -33,7 +33,7 @@
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="showUserDialog(row)">编辑</el-button>
-            <el-button v-if="row.role === 'admin'" type="warning" link @click="showPermissionDialog(row)">权限</el-button>
+            <el-button v-if="canAssignPermission(row)" type="warning" link @click="showPermissionDialog(row)">权限</el-button>
             <el-button type="success" link @click="showResetPwd(row)">重置密码</el-button>
             <el-button type="danger" link @click="handleDelete(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
           </template>
@@ -77,15 +77,25 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="permissionDialogVisible" title="管理权限配置" width="500px">
-      <el-checkbox-group v-model="adminPermissionIds">
-        <el-checkbox v-for="p in allPermissions" :key="p.id" :label="p.id" :value="p.id" style="display: block; margin-bottom: 8px;">
-          {{ p.name }} <span style="color: #909399; font-size: 12px;">({{ p.code }})</span>
-        </el-checkbox>
-      </el-checkbox-group>
+    <el-dialog v-model="permissionDialogVisible" title="管理权限配置" width="560px">
+      <div v-loading="permissionLoading" class="permission-box">
+        <el-alert
+          v-if="!permissionLoading && !allPermissions.length"
+          title="暂无可分配权限"
+          description="系统会自动初始化默认权限；如果仍为空，请刷新页面或检查后端权限表迁移。"
+          type="warning"
+          show-icon
+          :closable="false"
+        />
+        <el-checkbox-group v-else v-model="adminPermissionIds">
+          <el-checkbox v-for="p in allPermissions" :key="p.id" :label="p.id" :value="p.id" class="permission-item">
+            {{ p.name }} <span class="permission-code">({{ p.code }})</span>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
       <template #footer>
         <el-button @click="permissionDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSavePermission">保存</el-button>
+        <el-button type="primary" :disabled="!allPermissions.length" @click="handleSavePermission">保存</el-button>
       </template>
     </el-dialog>
 
@@ -107,7 +117,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { userApi, permissionApi } from '@/api/index'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const loading = ref(false)
 const users = ref<any[]>([])
 const total = ref(0)
@@ -118,6 +130,7 @@ const filterRole = ref('')
 const userDialogVisible = ref(false)
 const userForm = ref<any>({ username: '', password: '', realName: '', role: 'salesperson', phone: '', status: 1 })
 const permissionDialogVisible = ref(false)
+const permissionLoading = ref(false)
 const currentAdminId = ref(0)
 const allPermissions = ref<any[]>([])
 const adminPermissionIds = ref<number[]>([])
@@ -132,6 +145,10 @@ const roleMap: Record<string, string> = {
 function roleTagType(role: string) {
   const map: Record<string, string> = { boss: 'danger', admin: 'warning', salesperson: 'info', maker: '', delivery: 'success', promoter: 'info' }
   return map[role] || ''
+}
+
+function canAssignPermission(row: any) {
+  return userStore.role === 'boss' && row.role === 'admin'
 }
 
 async function fetchUsers() {
@@ -175,15 +192,23 @@ async function handleDelete(id: number) {
 
 async function showPermissionDialog(row: any) {
   currentAdminId.value = row.id
-  allPermissions.value = await permissionApi.list()
-  const ap = await permissionApi.getAdminPermissions(row.id)
-  adminPermissionIds.value = ap.map((p: any) => p.permissionId)
   permissionDialogVisible.value = true
+  permissionLoading.value = true
+  try {
+    const [permissions, ap] = await Promise.all([
+      permissionApi.list(),
+      permissionApi.getAdminPermissions(row.id),
+    ])
+    allPermissions.value = permissions
+    adminPermissionIds.value = ap.map((p: any) => p.permissionId)
+  } finally {
+    permissionLoading.value = false
+  }
 }
 
 async function handleSavePermission() {
   await permissionApi.setAdminPermissions(currentAdminId.value, adminPermissionIds.value)
-  ElMessage.success('权限设置保存成功')
+  ElMessage.success('权限设置保存成功，请让该管理员重新登录后台')
   permissionDialogVisible.value = false
 }
 
@@ -202,3 +227,9 @@ async function handleResetPwd() {
 watch([keyword, filterRole], () => { page.value = 1; fetchUsers() })
 onMounted(fetchUsers)
 </script>
+
+<style scoped>
+.permission-box { min-height: 120px; }
+.permission-item { display: block; margin-bottom: 10px; }
+.permission-code { color: #909399; font-size: 12px; }
+</style>
