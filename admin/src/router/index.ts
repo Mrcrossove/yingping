@@ -94,12 +94,6 @@ const router = createRouter({
           component: () => import('@/views/Payments.vue'),
           meta: { title: '支付记录', icon: 'Wallet' },
         },
-        {
-          path: 'merchant-approvals',
-          name: 'MerchantApprovals',
-          component: () => import('@/views/MerchantApprovals.vue'),
-          meta: { title: '商户审核', icon: 'Checked' },
-        },
       ],
     },
   ],

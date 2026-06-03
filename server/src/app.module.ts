@@ -22,7 +22,6 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { AddressModule } from './modules/address/address.module';
 import { ReviewModule } from './modules/review/review.module';
 import { BannerModule } from './modules/banner/banner.module';
-import { PermissionsGuard } from './common/permissions.guard';
 
 @Module({
   imports: [
@@ -51,7 +50,6 @@ import { PermissionsGuard } from './common/permissions.guard';
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule {}
