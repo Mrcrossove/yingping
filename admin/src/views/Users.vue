@@ -126,7 +126,7 @@ const resetPwdForm = ref({ userId: 0, password: '' })
 
 const roleMap: Record<string, string> = {
   boss: '老板', admin: '管理员', salesperson: '业务员',
-  maker: '制作员', delivery: '配送员', promoter: '推广员', merchant: '商户',
+  maker: '制作员', delivery: '配送员', promoter: '推广员',
 }
 
 function roleTagType(role: string) {

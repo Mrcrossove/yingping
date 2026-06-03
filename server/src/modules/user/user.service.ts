@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationService } from '../notification/notification.service';
 
+const EMPLOYEE_ROLES = ['boss', 'admin', 'salesperson', 'maker', 'delivery', 'promoter'];
+
 @Injectable()
 export class UserService {
   constructor(
@@ -13,7 +15,8 @@ export class UserService {
   async findAll(query: { page?: number; pageSize?: number; role?: string; keyword?: string; status?: number }) {
     const { page = 1, pageSize = 20, role, keyword, status } = query;
     const where: any = {};
-    if (role) where.role = role;
+    if (role && EMPLOYEE_ROLES.includes(role)) where.role = role;
+    else where.role = { in: EMPLOYEE_ROLES as any[] };
     if (status !== undefined) where.status = +status;
     if (keyword) {
       where.OR = [
@@ -105,6 +108,82 @@ export class UserService {
       this.prisma.user.count({ where }),
     ]);
     return { list, total, page, pageSize };
+  }
+
+  async getMerchantDashboard(query: {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    status?: number | string;
+    bound?: string;
+  }) {
+    const { page = 1, pageSize = 20, keyword, status, bound } = query;
+    const where: any = { role: 'merchant' };
+    if (status !== undefined && status !== '') where.status = +status;
+    if (bound === 'yes') where.merchantBindings = { some: {} };
+    if (bound === 'no') where.merchantBindings = { none: {} };
+    if (keyword) {
+      where.OR = [
+        { realName: { contains: keyword } },
+        { phone: { contains: keyword } },
+        { username: { contains: keyword } },
+      ];
+    }
+
+    const [list, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * +pageSize,
+        take: +pageSize,
+        select: {
+          id: true,
+          username: true,
+          realName: true,
+          phone: true,
+          status: true,
+          createdAt: true,
+          merchantProfile: true,
+          merchantBindings: {
+            select: {
+              createdAt: true,
+              promoter: {
+                select: { id: true, realName: true, phone: true },
+              },
+            },
+          },
+          merchantOrders: {
+            select: {
+              totalAmount: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const formatted = list.map((merchant) => {
+      const binding = merchant.merchantBindings[0];
+      const totalAmount = merchant.merchantOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+      return {
+        id: merchant.id,
+        username: merchant.username,
+        realName: merchant.realName,
+        phone: merchant.phone,
+        status: merchant.status,
+        createdAt: merchant.createdAt,
+        merchantProfile: merchant.merchantProfile,
+        promoter: binding?.promoter || null,
+        promoterBoundAt: binding?.createdAt || null,
+        orderCount: merchant.merchantOrders.length,
+        totalAmount,
+        lastOrderAt: merchant.merchantOrders[0]?.createdAt || null,
+      };
+    });
+
+    return { list: formatted, total, page, pageSize };
   }
 
   async create(data: { username: string; password: string; realName: string; role: string; phone?: string }, operator: any) {

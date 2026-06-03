@@ -42,6 +42,14 @@ export class UserController {
     return ApiResult.success(data);
   }
 
+  @Get('merchant-dashboard')
+  @Roles('boss', 'admin')
+  @RequirePermission('user:manage')
+  async getMerchantDashboard(@Query() query: any) {
+    const data = await this.userService.getMerchantDashboard(query);
+    return ApiResult.success(data);
+  }
+
   @Get(':id')
   @Roles('boss', 'admin')
   @RequirePermission('user:manage')

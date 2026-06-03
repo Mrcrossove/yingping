@@ -59,6 +59,12 @@ const router = createRouter({
           meta: { title: '员工管理', icon: 'User' },
         },
         {
+          path: 'merchants',
+          name: 'Merchants',
+          component: () => import('@/views/Merchants.vue'),
+          meta: { title: '商户看板', icon: 'Shop' },
+        },
+        {
           path: 'commissions',
           name: 'Commissions',
           component: () => import('@/views/Commissions.vue'),
