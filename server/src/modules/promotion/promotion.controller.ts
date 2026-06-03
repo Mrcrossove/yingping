@@ -65,6 +65,13 @@ export class PromotionController {
     return ApiResult.success(data);
   }
 
+  @Get('summary')
+  @Roles('promoter')
+  async getSummary(@Request() req) {
+    const data = await this.promotionService.getSummary(req.user.id);
+    return ApiResult.success(data);
+  }
+
   @Get('my-merchant-leads')
   @Roles('promoter')
   async getMyMerchantLeads(@Request() req, @Query() query: any) {

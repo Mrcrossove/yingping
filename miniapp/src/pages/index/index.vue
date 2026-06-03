@@ -72,11 +72,6 @@
       <text class="cart-amount">¥{{ cartTotal.toFixed(2) }}</text>
     </view>
 
-    <!-- 业务员专属：代客录单入口 -->
-    <view class="agent-entry" v-if="userStore.user?.role === 'salesperson'" @click="goManualOrder">
-      <text class="agent-icon">📝</text>
-      <text class="agent-text">代客录单</text>
-    </view>
   </view>
 </template>
 
@@ -226,11 +221,6 @@ function onRefresh() {
   })
 }
 function goCart() { uni.switchTab({ url: '/pages/cart/cart' }) }
-function goManualOrder() {
-  uni.setStorageSync('cartMode', 'agent')
-  uni.switchTab({ url: '/pages/cart/cart' })
-}
-
 onLoad((options: any) => {
   userStore.capturePromoterCode({ query: options })
   const categoryId = Number(options?.categoryId)
@@ -282,8 +272,6 @@ onMounted(() => {
 .cart-badge { background: #fff; color: #1a73e8; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 10px; }
 .cart-label { flex: 1; font-size: 15px; font-weight: 600; }
 .cart-amount { font-size: 17px; font-weight: 700; }
-.agent-entry { position: fixed; bottom: 90px; right: 16px; background: #52c41a; border-radius: 50px; padding: 10px 18px; display: flex; align-items: center; gap: 6px; color: #fff; box-shadow: 0 4px 12px rgba(82,196,26,0.4); font-size: 14px; font-weight: 600; }
-.agent-icon { font-size: 18px; }
 .empty-products { text-align: center; color: #999; padding: 60px 0; font-size: 14px; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: flex-end; }
 .role-sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; }

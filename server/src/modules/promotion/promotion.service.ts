@@ -149,6 +149,31 @@ export class PromotionService {
     };
   }
 
+  async getSummary(promoterId: number) {
+    const [bindingCount, totalCommission, pendingCommission, settledCommission] = await Promise.all([
+      this.prisma.merchantBinding.count({ where: { promoterId } }),
+      this.prisma.earning.aggregate({
+        where: { userId: promoterId, role: 'promoter' },
+        _sum: { amount: true },
+      }),
+      this.prisma.earning.aggregate({
+        where: { userId: promoterId, role: 'promoter', status: 'pending_settle' },
+        _sum: { amount: true },
+      }),
+      this.prisma.earning.aggregate({
+        where: { userId: promoterId, role: 'promoter', status: { in: ['settled', 'withdrawn'] } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      bindingCount,
+      totalCommission: Number(totalCommission._sum.amount || 0),
+      pendingCommission: Number(pendingCommission._sum.amount || 0),
+      settledCommission: Number(settledCommission._sum.amount || 0),
+    };
+  }
+
   async getMyMerchantLeads(promoterId: number, query: { page?: number; pageSize?: number }) {
     const { page = 1, pageSize = 20 } = query;
     const [list, total] = await Promise.all([

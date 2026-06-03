@@ -37,6 +37,12 @@ export const useUserStore = defineStore('user', () => {
     uni.setStorageSync('user', JSON.stringify(data.user))
   }
 
+  function updateUser(data: Partial<User>) {
+    if (!user.value) return
+    user.value = { ...user.value, ...data }
+    uni.setStorageSync('user', JSON.stringify(user.value))
+  }
+
   async function login(username: string, password: string) {
     const data = await post('/auth/login', { username, password })
     saveLogin(data)
@@ -79,5 +85,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/index/index' })
   }
 
-  return { token, user, isLoggedIn, isEmployee, capturePromoterCode, checkLogin, login, wxLogin, register, logout }
+  return { token, user, isLoggedIn, isEmployee, capturePromoterCode, checkLogin, login, wxLogin, register, updateUser, logout }
 })
