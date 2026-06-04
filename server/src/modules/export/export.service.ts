@@ -70,10 +70,17 @@ export class ExportService {
     res.end();
   }
 
-  async exportEarnings(res: Response, query: { role?: string; userId?: string }) {
+  async exportEarnings(res: Response, query: { role?: string; userId?: string; status?: string; keyword?: string; startDate?: string; endDate?: string }) {
     const where: any = {};
     if (query.role) where.role = query.role;
     if (query.userId) where.userId = +query.userId;
+    if (query.status) where.status = query.status;
+    if (query.keyword) where.orderNo = { contains: query.keyword };
+    if (query.startDate || query.endDate) {
+      where.createdAt = {};
+      if (query.startDate) where.createdAt.gte = new Date(query.startDate);
+      if (query.endDate) where.createdAt.lte = new Date(query.endDate + 'T23:59:59');
+    }
     const earnings = await this.prisma.earning.findMany({
       where,
       include: { user: { select: { realName: true, role: true } } },

@@ -103,8 +103,8 @@ function roleLabel(r: string) {
 onMounted(async () => {
   const [s, t, e, ls] = await Promise.allSettled([
     dashboardApi.stats(), dashboardApi.trend(7),
-    ((await fetch('/api/dashboard/earnings-summary')).json()).then((r: any) => r.data),
-    ((await fetch('/api/dashboard/low-stock')).json()).then((r: any) => r.data),
+    dashboardApi.earningsSummary(),
+    dashboardApi.lowStock(),
   ])
   stats.value = (s as any).value || stats.value
   trend.value = (t as any).value || []

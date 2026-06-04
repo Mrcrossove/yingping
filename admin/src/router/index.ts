@@ -71,6 +71,18 @@ const router = createRouter({
           meta: { title: '提成设置', icon: 'Money' },
         },
         {
+          path: 'earnings',
+          name: 'Earnings',
+          component: () => import('@/views/Earnings.vue'),
+          meta: { title: '员工收益', icon: 'TrendCharts' },
+        },
+        {
+          path: 'my-earnings',
+          name: 'MyEarnings',
+          component: () => import('@/views/MyEarnings.vue'),
+          meta: { title: '我的收益', icon: 'Wallet' },
+        },
+        {
           path: 'withdrawals',
           name: 'Withdrawals',
           component: () => import('@/views/Withdrawals.vue'),

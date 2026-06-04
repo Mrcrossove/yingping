@@ -20,7 +20,7 @@ export class ExportController {
   }
 
   @Get('earnings')
-  @RequirePermission('export:manage')
+  @RequirePermission('finance:view')
   async exportEarnings(@Query() query: any, @Res() res: Response) {
     await this.exportService.exportEarnings(res, query);
   }

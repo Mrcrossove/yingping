@@ -76,9 +76,11 @@
         </el-form-item>
         <el-form-item label="制作提成(元)">
           <el-input-number v-model="productForm.makerRate" :min="0" :precision="2" style="width: 100%" />
+          <div class="field-tip">当前实际结算以“提成设置”的分类+角色比例为准，此字段暂不参与自动结算。</div>
         </el-form-item>
         <el-form-item label="配送提成(元)">
           <el-input-number v-model="productForm.deliveryRate" :min="0" :precision="2" style="width: 100%" />
+          <div class="field-tip">当前实际结算以“提成设置”的分类+角色比例为准，此字段暂不参与自动结算。</div>
         </el-form-item>
         <el-form-item label="库存">
           <el-input-number v-model="productForm.stock" :min="0" :precision="0" style="width: 100%" />
@@ -286,6 +288,13 @@ onMounted(() => { fetchProducts(); fetchCategories() })
   background: #fafafa;
 }
 .upload-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+.field-tip {
+  width: 100%;
   margin-top: 6px;
   color: #909399;
   font-size: 12px;

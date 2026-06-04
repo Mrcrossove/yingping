@@ -55,13 +55,15 @@ export const paymentApi = {
 export const dashboardApi = {
   stats: () => request.get('/dashboard/stats'),
   trend: (days?: number) => request.get('/dashboard/trend', { params: { days } }),
+  earningsSummary: () => request.get('/dashboard/earnings-summary'),
+  lowStock: () => request.get('/dashboard/low-stock'),
 }
 
 import { API_BASE_URL } from '@/config'
 
 export const exportApi = {
   orders: (params?: any) => `${API_BASE_URL}/api/export/orders?${new URLSearchParams(params || {}).toString()}`,
-  earnings: () => `${API_BASE_URL}/api/export/earnings`,
+  earnings: (params?: any) => `${API_BASE_URL}/api/export/earnings?${new URLSearchParams(params || {}).toString()}`,
   withdrawals: () => `${API_BASE_URL}/api/export/withdrawals`,
 }
 
