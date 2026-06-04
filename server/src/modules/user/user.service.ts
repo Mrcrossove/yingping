@@ -48,6 +48,28 @@ export class UserService {
     return { list, total, page, pageSize };
   }
 
+  async getEarningOptions(query: { role?: string; keyword?: string }) {
+    const roles = ['salesperson', 'maker', 'delivery', 'promoter'];
+    const where: any = {
+      role: query.role && roles.includes(query.role) ? query.role : { in: roles as any[] },
+      status: 1,
+    };
+    if (query.keyword) {
+      where.OR = [
+        { realName: { contains: query.keyword } },
+        { phone: { contains: query.keyword } },
+        { username: { contains: query.keyword } },
+      ];
+    }
+
+    return this.prisma.user.findMany({
+      where,
+      select: { id: true, realName: true, role: true, phone: true },
+      orderBy: [{ role: 'asc' }, { id: 'desc' }],
+      take: 200,
+    });
+  }
+
   async findOne(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },

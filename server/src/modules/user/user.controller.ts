@@ -20,6 +20,14 @@ export class UserController {
     return ApiResult.success(data);
   }
 
+  @Get('earning-options')
+  @Roles('boss', 'admin')
+  @RequirePermission('finance:view')
+  async getEarningOptions(@Query() query: any) {
+    const data = await this.userService.getEarningOptions(query);
+    return ApiResult.success(data);
+  }
+
   @Get('pending-merchants')
   @Roles('boss', 'admin')
   @RequirePermission('user:manage')

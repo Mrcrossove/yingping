@@ -2,6 +2,7 @@ import request from '@/utils/request'
 
 export const userApi = {
   list: (params?: any) => request.get('/users', { params }),
+  earningOptions: (params?: any) => request.get('/users/earning-options', { params }),
   merchantDashboard: (params?: any) => request.get('/users/merchant-dashboard', { params }),
   detail: (id: number) => request.get(`/users/${id}`),
   create: (data: any) => request.post('/users', data),

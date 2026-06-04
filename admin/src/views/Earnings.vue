@@ -139,9 +139,7 @@ function buildParams() {
 }
 
 async function fetchEmployees() {
-  const roles = ['salesperson', 'maker', 'delivery', 'promoter']
-  const results = await Promise.all(roles.map((role) => userApi.list({ role, pageSize: 100 }).catch(() => ({ list: [] }))))
-  employees.value = results.flatMap((r: any) => r.list || [])
+  employees.value = await userApi.earningOptions().catch(() => [])
 }
 
 async function fetchList() {
