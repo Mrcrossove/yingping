@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { compressImageFile } from '@/utils/image'
 
 export { authApi } from './auth'
 export { userApi } from './user'
@@ -68,9 +69,10 @@ export const exportApi = {
 }
 
 export const fileApi = {
-  upload: (file: File) => {
+  upload: async (file: File) => {
+    const uploadFile = await compressImageFile(file)
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', uploadFile)
     return request.post('/files/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
