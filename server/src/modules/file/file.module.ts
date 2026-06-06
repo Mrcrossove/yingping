@@ -4,7 +4,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import COS from 'cos-nodejs-sdk-v5';
+import COS = require('cos-nodejs-sdk-v5');
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiResult } from '../../common/api-result';
 
