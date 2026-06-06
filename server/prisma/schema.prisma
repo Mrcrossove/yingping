@@ -96,7 +96,6 @@ model Category {
   createdAt DateTime @default(now()) @map("created_at")
 
   products        Product[]
-  commissionRules CommissionRule[]
 
   @@map("categories")
 }
@@ -119,6 +118,7 @@ model Product {
 
   category   Category    @relation(fields: [categoryId], references: [id])
   orderItems OrderItem[]
+  commissionRules CommissionRule[]
 
   @@map("products")
 }
@@ -195,15 +195,22 @@ model OrderFlow {
 
 model CommissionRule {
   id         Int      @id @default(autoincrement())
-  categoryId Int      @map("category_id")
+  productId  Int      @map("product_id")
   role       Role
-  percentage Decimal  @db.Decimal(5, 2)
+  type       CommissionType @default(percentage)
+  value      Decimal  @db.Decimal(10, 2)
   createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  category Category @relation(fields: [categoryId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
-  @@unique([categoryId, role])
+  @@unique([productId, role])
   @@map("commission_rules")
+}
+
+enum CommissionType {
+  percentage
+  fixed
 }
 
 model Earning {

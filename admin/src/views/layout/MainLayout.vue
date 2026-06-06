@@ -10,9 +10,9 @@
         :default-active="route.path"
         :collapse="collapsed"
         router
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        background-color="#172033"
+        text-color="#aeb8c7"
+        active-text-color="#ffffff"
       >
         <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
@@ -51,9 +51,9 @@
         class="app-menu mobile-app-menu"
         :default-active="route.path"
         router
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        background-color="#172033"
+        text-color="#aeb8c7"
+        active-text-color="#ffffff"
         @select="drawerVisible = false"
       >
         <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
@@ -92,22 +92,26 @@ const menuItems = computed(() => {
 </script>
 
 <style scoped>
-.layout { height: 100vh; overflow: hidden; }
+.layout { height: 100vh; overflow: hidden; background: #eef2f6; }
 .content-shell { min-width: 0; height: 100vh; }
-.aside { background: #304156; transition: width 0.3s; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-.logo { height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; white-space: nowrap; }
-.header { background: #fff; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e6e6e6; padding: 0 20px; flex-shrink: 0; }
+.aside { background: #172033; transition: width 0.3s; overflow: hidden; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.06); }
+.logo { height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 17px; font-weight: 800; white-space: nowrap; letter-spacing: 0.2px; background: #111827; }
+.header { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e6ebf2; padding: 0 20px; flex-shrink: 0; }
 .header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .header-right { display: flex; align-items: center; gap: 12px; }
 .user-info { color: #606266; }
-.main { height: calc(100vh - 60px); overflow: auto; background: #f0f2f5; padding: 20px; }
+.main { height: calc(100vh - 60px); overflow: auto; background: #eef2f6; padding: 22px; }
 .app-menu { border-right: none; flex: 1; overflow-y: auto; overflow-x: hidden; }
 .app-menu::-webkit-scrollbar { width: 6px; }
 .app-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 6px; }
 .mobile-toggle, .mobile-title { display: none; }
 
-:deep(.mobile-menu-drawer .el-drawer__body) { padding: 0; background: #304156; overflow: hidden; }
-:deep(.mobile-menu-drawer .el-drawer__header) { margin-bottom: 0; padding: 16px 18px; background: #263445; color: #fff; }
+:deep(.el-menu-item) { height: 44px; margin: 4px 10px; border-radius: 8px; color: #aeb8c7; }
+:deep(.el-menu-item.is-active) { background: #2563eb !important; color: #fff !important; box-shadow: 0 8px 18px rgba(37,99,235,0.28); }
+:deep(.el-menu-item:hover) { background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+
+:deep(.mobile-menu-drawer .el-drawer__body) { padding: 0; background: #172033; overflow: hidden; }
+:deep(.mobile-menu-drawer .el-drawer__header) { margin-bottom: 0; padding: 16px 18px; background: #111827; color: #fff; }
 :deep(.mobile-menu-drawer .el-drawer__close-btn) { color: #fff; }
 .mobile-app-menu { height: 100%; overflow-y: auto; }
 

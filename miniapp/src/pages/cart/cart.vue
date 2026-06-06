@@ -112,26 +112,26 @@ onShow(fetchAddresses)
 </script>
 
 <style scoped>
-.container { padding-bottom: 120rpx; }
-.cart-item { display: flex; align-items: center; padding: 12px; background: #fff; margin-bottom: 8px; border-radius: 8px; }
+.container { min-height: 100vh; padding: 10px 12px 120rpx; box-sizing: border-box; background: #eef2f6; }
+.cart-item { display: flex; align-items: center; padding: 12px; background: #fff; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 0 0 1px #e8edf4 inset; }
 .checkbox { margin-right: 10px; }
-.cart-img { width: 80rpx; height: 80rpx; border-radius: 8px; background: #f0f0f0; margin-right: 10px; }
+.cart-img { width: 88rpx; height: 88rpx; border-radius: 10px; background: #f5f7fa; margin-right: 10px; }
 .cart-info { flex: 1; }
-.cart-name { font-size: 15px; font-weight: bold; }
-.cart-price { color: #f56c6c; font-size: 14px; margin-top: 4px; }
+.cart-name { font-size: 15px; font-weight: 800; color: #172033; }
+.cart-price { color: #dc2626; font-size: 14px; margin-top: 4px; font-weight: 700; }
 .quantity-ctrl { display: flex; align-items: center; gap: 8px; }
-.qty-btn { width: 30px; height: 30px; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.qty-btn { width: 30px; height: 30px; background: #f8fafc; border: 1px solid #d9e2ee; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #334155; }
 .qty-num { font-size: 15px; min-width: 20px; text-align: center; }
-.order-card { background: #fff; margin: 8px 0; padding: 14px; border-radius: 8px; }
-.card-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: #333; }
+.order-card { background: #fff; margin: 10px 0; padding: 14px; border-radius: 12px; box-shadow: 0 0 0 1px #e8edf4 inset; }
+.card-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; color: #172033; }
 .address-content { display: flex; flex-direction: column; gap: 4px; }
 .address-name { font-size: 14px; font-weight: 600; color: #333; }
 .address-detail { font-size: 13px; color: #666; line-height: 1.5; }
 .address-empty { color: #999; font-size: 13px; }
-.note-input { width: 100%; min-height: 72px; box-sizing: border-box; border: 1px solid #eee; border-radius: 8px; padding: 10px; font-size: 14px; }
-.cart-footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #fff; border-top: 1px solid #eee; }
-.total-price { color: #f56c6c; font-size: 18px; font-weight: bold; }
-.submit-btn { background: #409EFF; color: #fff; border: none; border-radius: 20px; padding: 10px 30px; font-size: 15px; }
+.note-input { width: 100%; min-height: 76px; box-sizing: border-box; border: 1px solid #d9e2ee; border-radius: 10px; padding: 10px; font-size: 14px; background: #fbfcfe; }
+.cart-footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.96); border-top: 1px solid #e6ebf2; box-shadow: 0 -10px 24px rgba(15,23,42,0.06); }
+.total-price { color: #dc2626; font-size: 19px; font-weight: 800; }
+.submit-btn { background: #2563eb; color: #fff; border: none; border-radius: 12px; padding: 10px 28px; font-size: 15px; font-weight: 700; }
 .submit-btn[disabled] { opacity: 0.5; }
-.empty { text-align: center; padding: 100px 0; color: #999; }
+.empty { text-align: center; margin: 90px 12px 0; padding: 54px 20px; color: #7b8494; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #e8edf4 inset; }
 </style>

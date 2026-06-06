@@ -475,15 +475,20 @@ export class OrderService {
     });
     if (existing > 0) return;
 
-    const commissionRules = await this.prisma.commissionRule.findMany();
+    const productIds = order.items.map((item) => item.productId);
+    const commissionRules = await this.prisma.commissionRule.findMany({
+      where: { productId: { in: productIds } },
+    });
     if (commissionRules.length === 0) return;
 
     for (const item of order.items) {
       const product = item.product;
-      const categoryRules = commissionRules.filter((r) => r.categoryId === product.categoryId);
+      const productRules = commissionRules.filter((r) => r.productId === product.id);
 
-      for (const rule of categoryRules) {
-        const amount = product.price.mul(item.quantity).mul(rule.percentage).div(100);
+      for (const rule of productRules) {
+        const amount = rule.type === 'fixed'
+          ? rule.value.mul(item.quantity)
+          : item.price.mul(item.quantity).mul(rule.value).div(100);
         if (amount.lessThanOrEqualTo(0)) continue;
 
         let userId = 0;

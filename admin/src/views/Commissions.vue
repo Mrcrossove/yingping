@@ -2,68 +2,158 @@
   <div>
     <el-card>
       <template #header>
-        <span>提成比例设置</span>
+        <div class="toolbar">
+          <span>商品提成设置</span>
+          <div class="filters">
+            <el-select v-model="filterCategoryId" placeholder="商品分类" clearable style="width: 150px;">
+              <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+            </el-select>
+            <el-input v-model="keyword" placeholder="搜索商品名称" clearable style="width: 220px;" @keyup.enter="fetchRules" />
+            <el-button type="primary" @click="fetchRules">查询</el-button>
+          </div>
+        </div>
       </template>
-      <div style="margin-bottom: 16px;">
-        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 160px; margin-right: 10px;">
-          <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
-        </el-select>
-        <el-select v-model="form.role" placeholder="选择角色" style="width: 130px; margin-right: 10px;">
-          <el-option label="业务员" value="salesperson" />
-          <el-option label="制作员" value="maker" />
-          <el-option label="配送员" value="delivery" />
-          <el-option label="推广员" value="promoter" />
-        </el-select>
-        <el-input-number v-model="form.percentage" :min="0" :max="100" :precision="1" style="width: 150px; margin-right: 10px;" />
-        <span style="margin-right: 10px;">%</span>
-        <el-button type="primary" @click="handleSetRule">添加/修改</el-button>
-      </div>
-      <el-table :data="rules" stripe>
-        <el-table-column prop="category.name" label="商品分类" width="150" />
-        <el-table-column label="角色" width="120">
-          <template #default="{ row }">{{ roleMap[row.role] || row.role }}</template>
+
+      <el-table :data="products" v-loading="loading" stripe>
+        <el-table-column prop="name" label="商品名称" min-width="160" />
+        <el-table-column prop="category.name" label="分类" width="120" />
+        <el-table-column label="单价" width="100">
+          <template #default="{ row }">¥{{ money(row.price) }}</template>
         </el-table-column>
-        <el-table-column prop="percentage" label="提成比例(%)" width="150">
-          <template #default="{ row }">{{ Number(row.percentage) }}%</template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
+        <el-table-column v-for="role in roles" :key="role.key" :label="role.label" width="140">
           <template #default="{ row }">
-            <el-button type="danger" link @click="handleDelete(row.id)">删除</el-button>
+            <el-tag v-if="getRule(row, role.key)" type="success">{{ formatRule(getRule(row, role.key)) }}</el-tag>
+            <el-tag v-else type="info">未设置</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="showDialog(row)">设置</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="dialogVisible" :title="`设置提成 - ${currentProduct?.name || ''}`" width="680px">
+      <el-table :data="ruleForm" border>
+        <el-table-column prop="label" label="角色" width="100" />
+        <el-table-column label="启用" width="80">
+          <template #default="{ row }">
+            <el-switch v-model="row.enabled" />
+          </template>
+        </el-table-column>
+        <el-table-column label="提成方式" width="160">
+          <template #default="{ row }">
+            <el-select v-model="row.type" :disabled="!row.enabled" style="width: 130px;">
+              <el-option label="百分比" value="percentage" />
+              <el-option label="固定金额" value="fixed" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column label="提成数值">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.value"
+              :disabled="!row.enabled"
+              :min="0"
+              :max="row.type === 'percentage' ? 100 : 9999"
+              :precision="2"
+              style="width: 180px;"
+            />
+            <span class="unit-text">{{ row.type === 'percentage' ? '%' : '元/件' }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { commissionApi, categoryApi } from '@/api/index'
 
-const rules = ref<any[]>([])
+const roles = [
+  { key: 'salesperson', label: '业务员' },
+  { key: 'maker', label: '制作员' },
+  { key: 'delivery', label: '配送员' },
+  { key: 'promoter', label: '推广员' },
+]
+
+const loading = ref(false)
+const saving = ref(false)
+const products = ref<any[]>([])
 const categories = ref<any[]>([])
-const form = reactive({ categoryId: null as number | null, role: 'salesperson', percentage: 5 })
-const roleMap: Record<string, string> = { salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员' }
+const filterCategoryId = ref<number | null>(null)
+const keyword = ref('')
+const dialogVisible = ref(false)
+const currentProduct = ref<any>(null)
+const ruleForm = ref<any[]>([])
+
+function money(value: any) {
+  return Number(value || 0).toFixed(2)
+}
+
+function getRule(product: any, role: string) {
+  return (product.rules || []).find((item: any) => item.role === role)
+}
+
+function formatRule(rule: any) {
+  if (!rule) return '未设置'
+  const value = Number(rule.value || 0)
+  return rule.type === 'fixed' ? `${value.toFixed(2)}元/件` : `${value.toFixed(2)}%`
+}
 
 async function fetchRules() {
-  rules.value = await commissionApi.list()
-  categories.value = await categoryApi.list()
+  loading.value = true
+  try {
+    const params: any = {}
+    if (filterCategoryId.value) params.categoryId = filterCategoryId.value
+    if (keyword.value) params.keyword = keyword.value
+    products.value = await commissionApi.list(params)
+    categories.value = await categoryApi.list()
+  } finally {
+    loading.value = false
+  }
 }
 
-async function handleSetRule() {
-  if (!form.categoryId) { ElMessage.warning('请选择分类'); return }
-  await commissionApi.setRule({ categoryId: form.categoryId, role: form.role, percentage: form.percentage })
-  ElMessage.success('设置成功')
-  fetchRules()
+function showDialog(product: any) {
+  currentProduct.value = product
+  ruleForm.value = roles.map((role) => {
+    const rule = getRule(product, role.key)
+    return {
+      role: role.key,
+      label: role.label,
+      enabled: Boolean(rule),
+      type: rule?.type || 'percentage',
+      value: Number(rule?.value || 0),
+    }
+  })
+  dialogVisible.value = true
 }
 
-async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确定删除?', '提示', { type: 'warning' })
-  await commissionApi.deleteRule(id)
-  ElMessage.success('删除成功')
-  fetchRules()
+async function handleSave() {
+  if (!currentProduct.value) return
+  saving.value = true
+  try {
+    await commissionApi.setProductRules(currentProduct.value.id, ruleForm.value)
+    ElMessage.success('提成规则已保存')
+    dialogVisible.value = false
+    fetchRules()
+  } finally {
+    saving.value = false
+  }
 }
 
 onMounted(fetchRules)
 </script>
+
+<style scoped>
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.filters { display: flex; align-items: center; gap: 10px; }
+.unit-text { margin-left: 8px; color: #606266; }
+</style>

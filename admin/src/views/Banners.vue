@@ -36,7 +36,7 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑轮播图' : '新增轮播图'" width="560px">
       <el-form :model="form" label-width="80px">
         <el-form-item label="标题">
-          <el-input v-model="form.title" placeholder="用于后台识别，可填写营业执照、门店照片等" />
+          <el-input v-model="form.title" placeholder="请输入标题，例如：营业执照、门店照片、公司资质" />
         </el-form-item>
         <el-form-item label="图片">
           <el-upload
@@ -54,7 +54,7 @@
           <el-input v-model="form.link" placeholder="选填，小程序页面路径或外部链接" />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
+          <el-input-number v-model="form.sort" :min="1" style="width: 100%" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
@@ -77,7 +77,7 @@ import { UPLOADS_BASE_URL } from '@/config'
 const loading = ref(false)
 const dialogVisible = ref(false)
 const banners = ref<any[]>([])
-const form = ref<any>({ title: '', image: '', link: '', sort: 0, status: 1 })
+const form = ref<any>({ title: '', image: '', link: '', sort: 1, status: 1 })
 
 function imageUrl(url: string) {
   if (!url) return ''
@@ -96,14 +96,13 @@ async function fetchBanners() {
 }
 
 function showDialog(row?: any) {
-  form.value = row ? { ...row } : { title: '', image: '', link: '', sort: 0, status: 1 }
+  form.value = row ? { ...row } : { title: '', image: '', link: '', sort: 1, status: 1 }
   dialogVisible.value = true
 }
 
 async function handleUpload(options: any) {
   const data = await fileApi.upload(options.file)
   form.value.image = data.url
-  if (!form.value.title) form.value.title = data.filename || '轮播图'
   ElMessage.success('上传成功')
 }
 
@@ -124,7 +123,7 @@ async function handleSave() {
 }
 
 async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确定删除此轮播图?', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确定删除此轮播图？', '提示', { type: 'warning' })
   await bannerApi.remove(id)
   ElMessage.success('删除成功')
   fetchBanners()

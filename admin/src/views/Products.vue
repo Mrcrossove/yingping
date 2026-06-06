@@ -2,17 +2,18 @@
   <div>
     <el-card>
       <template #header>
-        <div style="display: flex; justify-content: space-between;">
+        <div class="toolbar">
           <span>商品管理</span>
-          <div>
-            <el-select v-model="filterCategoryId" placeholder="筛选分类" clearable style="width: 130px; margin-right: 10px;">
+          <div class="filters">
+            <el-select v-model="filterCategoryId" placeholder="筛选分类" clearable style="width: 150px;">
               <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
             </el-select>
             <el-button type="primary" @click="showProductDialog()">新增商品</el-button>
-            <el-button @click="categoryDialogVisible = true" style="margin-left: 8px;">管理分类</el-button>
+            <el-button @click="categoryDialogVisible = true">管理分类</el-button>
           </div>
         </div>
       </template>
+
       <el-table :data="products" v-loading="loading" stripe>
         <el-table-column label="图片" width="90">
           <template #default="{ row }">
@@ -22,18 +23,18 @@
         </el-table-column>
         <el-table-column prop="name" label="商品名称" />
         <el-table-column prop="category.name" label="分类" width="120" />
-        <el-table-column prop="price" label="单价" width="100">
+        <el-table-column label="单价" width="100">
           <template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template>
         </el-table-column>
         <el-table-column prop="unit" label="单位" width="80" />
         <el-table-column label="库存" width="120">
           <template #default="{ row }">
             <el-tag :type="isLowStock(row) ? 'danger' : 'success'">
-              {{ row.stock ?? 0 }} / 警戒 {{ row.minStock ?? 10 }}
+              {{ row.stock ?? 0 }} / 预警 {{ row.minStock ?? 10 }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '上架' : '下架' }}</el-tag>
           </template>
@@ -47,9 +48,8 @@
       </el-table>
     </el-card>
 
-    <!-- 商品弹窗 -->
     <el-dialog v-model="productDialogVisible" :title="productForm.id ? '编辑商品' : '新增商品'" width="500px">
-      <el-form ref="productFormRef" :model="productForm" :rules="productRules" label-width="110px">
+      <el-form ref="productFormRef" :model="productForm" :rules="productRules" label-width="100px">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="productForm.name" />
         </el-form-item>
@@ -72,15 +72,7 @@
             <img v-if="productForm.image" class="product-preview" :src="imageUrl(productForm.image)" />
             <div v-else class="upload-placeholder">点击上传商品图片</div>
           </el-upload>
-          <div class="upload-tip">建议 800x800，单张不超过 5MB，支持 jpg/png/webp/gif。</div>
-        </el-form-item>
-        <el-form-item label="制作提成(元)">
-          <el-input-number v-model="productForm.makerRate" :min="0" :precision="2" style="width: 100%" />
-          <div class="field-tip">当前实际结算以“提成设置”的分类+角色比例为准，此字段暂不参与自动结算。</div>
-        </el-form-item>
-        <el-form-item label="配送提成(元)">
-          <el-input-number v-model="productForm.deliveryRate" :min="0" :precision="2" style="width: 100%" />
-          <div class="field-tip">当前实际结算以“提成设置”的分类+角色比例为准，此字段暂不参与自动结算。</div>
+          <div class="upload-tip">上传前会自动压缩，建议使用清晰方图。</div>
         </el-form-item>
         <el-form-item label="库存">
           <el-input-number v-model="productForm.stock" :min="0" :precision="0" style="width: 100%" />
@@ -89,7 +81,7 @@
           <el-input-number v-model="productForm.minStock" :min="0" :precision="0" style="width: 100%" />
         </el-form-item>
         <el-form-item label="单位">
-          <el-input v-model="productForm.unit" placeholder="如：杯、瓶" />
+          <el-input v-model="productForm.unit" placeholder="如：杯、瓶、份" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="productForm.description" type="textarea" :rows="3" />
@@ -104,10 +96,9 @@
       </template>
     </el-dialog>
 
-    <!-- 分类弹窗 -->
     <el-dialog v-model="categoryDialogVisible" title="分类管理" width="500px">
-      <div style="margin-bottom: 12px;">
-        <el-input v-model="newCategoryName" placeholder="输入分类名称" style="width: 200px; margin-right: 10px;" />
+      <div class="category-create">
+        <el-input v-model="newCategoryName" placeholder="输入分类名称" style="width: 220px;" />
         <el-button type="primary" @click="handleAddCategory">添加</el-button>
       </div>
       <el-table :data="categories" stripe max-height="400">
@@ -138,11 +129,15 @@ const productDialogVisible = ref(false)
 const categoryDialogVisible = ref(false)
 const newCategoryName = ref('')
 const productFormRef = ref<FormInstance>()
-const productForm = ref<any>({ name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1 })
+const productForm = ref<any>(createEmptyProduct())
 const productRules: FormRules = {
   name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
-  price: [{ required: true, message: '请输入商品单价', trigger: 'change' }]
+  price: [{ required: true, message: '请输入商品单价', trigger: 'change' }],
+}
+
+function createEmptyProduct() {
+  return { name: '', categoryId: null, price: 0, image: '', unit: '杯', description: '', status: 1, stock: 0, minStock: 10 }
 }
 
 function imageUrl(url: string) {
@@ -158,7 +153,9 @@ async function fetchProducts() {
     if (filterCategoryId.value) params.categoryId = filterCategoryId.value
     const data = await productApi.list(params)
     products.value = data.list
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchCategories() {
@@ -167,11 +164,8 @@ async function fetchCategories() {
 
 function showProductDialog(row?: any) {
   productForm.value = row
-    ? {
-        ...row,
-        categoryId: row.categoryId ?? row.category?.id ?? null
-      }
-    : { name: '', categoryId: null, price: 0, unit: '杯', description: '', status: 1, makerRate: 0, deliveryRate: 0, stock: 0, minStock: 10 }
+    ? { ...row, categoryId: row.categoryId ?? row.category?.id ?? null }
+    : createEmptyProduct()
   productDialogVisible.value = true
   productFormRef.value?.clearValidate()
 }
@@ -218,15 +212,13 @@ function buildProductPayload() {
     status: Number(form.status ?? 1),
     stock: form.stock === undefined || form.stock === null || form.stock === '' ? undefined : Number(form.stock),
     minStock: form.minStock === undefined || form.minStock === null || form.minStock === '' ? undefined : Number(form.minStock),
-    makerRate: form.makerRate === undefined || form.makerRate === null || form.makerRate === '' ? undefined : Number(form.makerRate),
-    deliveryRate: form.deliveryRate === undefined || form.deliveryRate === null || form.deliveryRate === '' ? undefined : Number(form.deliveryRate)
   }
 }
 
 async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确定删除?', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确定下架此商品？', '提示', { type: 'warning' })
   await productApi.remove(id)
-  ElMessage.success('删除成功')
+  ElMessage.success('已下架')
   fetchProducts()
 }
 
@@ -239,16 +231,22 @@ async function handleAddCategory() {
 }
 
 async function handleDeleteCategory(id: number) {
-  await ElMessageBox.confirm('确定删除此分类?', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确定删除此分类？', '提示', { type: 'warning' })
   await categoryApi.remove(id)
   ElMessage.success('删除成功')
   fetchCategories()
 }
 
-onMounted(() => { fetchProducts(); fetchCategories() })
+onMounted(() => {
+  fetchProducts()
+  fetchCategories()
+})
 </script>
 
 <style scoped>
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.filters { display: flex; align-items: center; gap: 10px; }
+.category-create { margin-bottom: 12px; display: flex; gap: 10px; }
 .product-thumb {
   width: 52px;
   height: 52px;
@@ -265,9 +263,7 @@ onMounted(() => { fetchProducts(); fetchCategories() })
   color: #909399;
   font-size: 12px;
 }
-.product-uploader {
-  width: 100%;
-}
+.product-uploader { width: 100%; }
 .product-preview {
   width: 150px;
   height: 150px;
@@ -288,13 +284,6 @@ onMounted(() => { fetchProducts(); fetchCategories() })
   background: #fafafa;
 }
 .upload-tip {
-  margin-top: 6px;
-  color: #909399;
-  font-size: 12px;
-  line-height: 18px;
-}
-.field-tip {
-  width: 100%;
   margin-top: 6px;
   color: #909399;
   font-size: 12px;
