@@ -31,7 +31,7 @@
           <text class="location-action">选择</text>
         </view>
         <picker mode="region" :value="regionValue" @change="handleRegionChange">
-          <view class="region-picker">{{ regionText || '请选择省/市/区（地图解析失败时手动选择）' }}</view>
+          <view class="region-picker">{{ regionText || '省/市/区（可选，地图解析不准时可手动修正）' }}</view>
         </picker>
         <input v-model="form.detail" placeholder="门牌号 / 楼层 / 档口号" class="form-input" />
         <view class="form-btns">
@@ -98,7 +98,10 @@ function editAddr(addr: any) {
 }
 
 async function saveAddr() {
-  if (!form.name || !form.phone || !form.province || !form.city || !form.district || !form.detail) { uni.showToast({ title: '请填写完整信息', icon: 'none' }); return }
+  if (!form.name || !form.phone || form.latitude == null || form.longitude == null || !form.detail) {
+    uni.showToast({ title: '请填写姓名、手机号、地图位置和门牌号', icon: 'none' })
+    return
+  }
   const payload = {
     name: form.name,
     phone: form.phone,
@@ -156,7 +159,7 @@ async function fillAddressByLocation(latitude: number, longitude: number, fallba
     form.mapAddress = data.recommend || data.address || fallbackAddress
     if (!form.locationName) form.locationName = data.recommend || data.address || ''
   } catch {
-    uni.showToast({ title: '地址解析失败，请手动选择省市区', icon: 'none' })
+    uni.showToast({ title: '地址解析失败，可继续填写门牌号保存', icon: 'none' })
   }
 }
 
@@ -180,7 +183,7 @@ function formatRegionAddress(address: any) {
 }
 
 function formatAddress(address: any) {
-  return [address.province, address.city, address.district, address.detail].filter(Boolean).join('')
+  return [address.province, address.city, address.district, address.detail].filter(Boolean).join('') || address.detail || ''
 }
 
 onShow(fetchList)

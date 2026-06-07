@@ -75,7 +75,7 @@ async function fetchAddresses() {
 }
 
 function formatAddress(address: any) {
-  return [address.province, address.city, address.district, address.detail].filter(Boolean).join('')
+  return [address.province, address.city, address.district, address.detail].filter(Boolean).join('') || address.detail || ''
 }
 
 function goAddress() {
