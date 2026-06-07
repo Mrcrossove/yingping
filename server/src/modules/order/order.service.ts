@@ -21,6 +21,10 @@ export class OrderService {
     receiverName?: string;
     receiverPhone?: string;
     receiverAddress?: string;
+    receiverLocationName?: string;
+    receiverLatitude?: number;
+    receiverLongitude?: number;
+    receiverAdcode?: string;
   }, merchantId: number) {
     if (!dto.items?.length) throw new BadRequestException('订单商品不能为空');
     const orderNo = this.generateOrderNo();
@@ -428,6 +432,10 @@ export class OrderService {
     receiverName?: string;
     receiverPhone?: string;
     receiverAddress?: string;
+    receiverLocationName?: string;
+    receiverLatitude?: number;
+    receiverLongitude?: number;
+    receiverAdcode?: string;
   }, salespersonId: number) {
     const merchant = await this.prisma.user.findUnique({ where: { id: +dto.merchantId } });
     if (!merchant || merchant.role !== 'merchant' || merchant.status !== 1) {
@@ -528,6 +536,10 @@ export class OrderService {
     receiverName?: string;
     receiverPhone?: string;
     receiverAddress?: string;
+    receiverLocationName?: string;
+    receiverLatitude?: number;
+    receiverLongitude?: number;
+    receiverAdcode?: string;
   }, merchantId: number) {
     if (dto.addressId) {
       const address = await this.prisma.address.findUnique({ where: { id: +dto.addressId } });
@@ -537,6 +549,10 @@ export class OrderService {
         receiverName: address.name,
         receiverPhone: address.phone,
         receiverAddress: this.formatAddress(address),
+        receiverLocationName: address.locationName,
+        receiverLatitude: address.latitude,
+        receiverLongitude: address.longitude,
+        receiverAdcode: address.adcode,
       };
     }
 
@@ -548,6 +564,10 @@ export class OrderService {
         receiverName: dto.receiverName,
         receiverPhone: dto.receiverPhone,
         receiverAddress: dto.receiverAddress,
+        receiverLocationName: dto.receiverLocationName,
+        receiverLatitude: dto.receiverLatitude,
+        receiverLongitude: dto.receiverLongitude,
+        receiverAdcode: dto.receiverAdcode,
       };
     }
 

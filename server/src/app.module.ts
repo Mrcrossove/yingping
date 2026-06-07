@@ -22,6 +22,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { AddressModule } from './modules/address/address.module';
 import { ReviewModule } from './modules/review/review.module';
 import { BannerModule } from './modules/banner/banner.module';
+import { LocationModule } from './modules/location/location.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { BannerModule } from './modules/banner/banner.module';
     AddressModule,
     ReviewModule,
     BannerModule,
+    LocationModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

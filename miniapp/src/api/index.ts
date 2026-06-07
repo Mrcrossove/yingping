@@ -49,6 +49,10 @@ export const addressApi = {
   setDefault: (id: number) => post(`/addresses/${id}/default`),
 }
 
+export const locationApi = {
+  reverseGeocode: (data: { latitude: number; longitude: number }) => post('/location/reverse-geocode', data),
+}
+
 export const paymentApi = {
   create: (orderId: number) => post(`/payments/create/${orderId}`),
   jsapi: (orderId: number, openid: string) => post(`/payments/jsapi/${orderId}`, { openid }),

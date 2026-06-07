@@ -137,6 +137,10 @@ model Order {
   receiverName   String?     @map("receiver_name") @db.VarChar(30)
   receiverPhone  String?     @map("receiver_phone") @db.VarChar(20)
   receiverAddress String?    @map("receiver_address") @db.VarChar(500)
+  receiverLocationName String? @map("receiver_location_name") @db.VarChar(100)
+  receiverLatitude Decimal?   @map("receiver_latitude") @db.Decimal(10, 6)
+  receiverLongitude Decimal?  @map("receiver_longitude") @db.Decimal(10, 6)
+  receiverAdcode String?      @map("receiver_adcode") @db.VarChar(12)
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -393,6 +397,10 @@ model Address {
   city      String?  @db.VarChar(20)
   district  String?  @db.VarChar(20)
   detail    String   @db.VarChar(200)
+  locationName String? @map("location_name") @db.VarChar(100)
+  latitude  Decimal? @db.Decimal(10, 6)
+  longitude Decimal? @db.Decimal(10, 6)
+  adcode    String?  @db.VarChar(12)
   isDefault Boolean  @default(false) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at")
 

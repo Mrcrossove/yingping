@@ -21,6 +21,7 @@
         <view class="card-title">收货地址</view>
         <view v-if="selectedAddress" class="address-content">
           <text class="address-name">{{ selectedAddress.name }} {{ selectedAddress.phone }}</text>
+          <text v-if="selectedAddress.locationName" class="address-location">{{ selectedAddress.locationName }}</text>
           <text class="address-detail">{{ formatAddress(selectedAddress) }}</text>
         </view>
         <view v-else class="address-empty">请选择收货地址</view>
@@ -126,6 +127,7 @@ onShow(fetchAddresses)
 .card-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; color: #172033; }
 .address-content { display: flex; flex-direction: column; gap: 4px; }
 .address-name { font-size: 14px; font-weight: 600; color: #333; }
+.address-location { font-size: 14px; font-weight: 800; color: #172033; }
 .address-detail { font-size: 13px; color: #666; line-height: 1.5; }
 .address-empty { color: #999; font-size: 13px; }
 .note-input { width: 100%; min-height: 76px; box-sizing: border-box; border: 1px solid #d9e2ee; border-radius: 10px; padding: 10px; font-size: 14px; background: #fbfcfe; }
