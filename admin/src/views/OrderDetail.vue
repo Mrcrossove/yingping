@@ -17,6 +17,22 @@
         <el-descriptions-item label="备注">{{ order.note || '-' }}</el-descriptions-item>
       </el-descriptions>
 
+      <el-descriptions v-if="order.receiverName || order.receiverAddress" title="收货信息" :column="2" border style="margin-top: 20px;">
+        <el-descriptions-item label="收货人">{{ order.receiverName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="联系电话">{{ order.receiverPhone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="地图位置">{{ order.receiverLocationName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="经纬度">
+          <span v-if="order.receiverLatitude && order.receiverLongitude">{{ order.receiverLatitude }}, {{ order.receiverLongitude }}</span>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="收货地址" :span="2">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>{{ order.receiverAddress || '-' }}</span>
+            <el-button v-if="order.receiverAddress" size="small" @click="copyAddress">复制地址</el-button>
+          </div>
+        </el-descriptions-item>
+      </el-descriptions>
+
       <h4 style="margin-top: 20px;">商品明细</h4>
       <el-table :data="order.items" border>
         <el-table-column prop="product.name" label="商品" />
@@ -170,6 +186,14 @@ async function handleCancel() {
   await orderApi.cancel(order.value.id)
   ElMessage.success('订单已取消')
   fetchOrder()
+}
+
+async function copyAddress() {
+  const text = [order.value.receiverName, order.value.receiverPhone, order.value.receiverLocationName, order.value.receiverAddress]
+    .filter(Boolean)
+    .join(' ')
+  await navigator.clipboard.writeText(text)
+  ElMessage.success('地址已复制')
 }
 
 onMounted(fetchOrder)

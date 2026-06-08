@@ -28,6 +28,7 @@ model User {
   orderFlows          OrderFlow[]
   earnings            Earning[]
   withdrawals         Withdrawal[]
+  withdrawalItems     WithdrawalItem[]
   promotionCodes      PromotionCode[]
   merchantBindings    MerchantBinding[]  @relation("MbMerchant")
   promoterBindings    MerchantBinding[]  @relation("MbPromoter")
@@ -141,6 +142,7 @@ model Order {
   receiverLatitude Decimal?   @map("receiver_latitude") @db.Decimal(10, 6)
   receiverLongitude Decimal?  @map("receiver_longitude") @db.Decimal(10, 6)
   receiverAdcode String?      @map("receiver_adcode") @db.VarChar(12)
+  stockDeducted Boolean       @default(false) @map("stock_deducted")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -230,6 +232,7 @@ model Earning {
 
   user  User  @relation(fields: [userId], references: [id])
   order Order @relation(fields: [orderId], references: [id])
+  withdrawalItems WithdrawalItem[]
 
   @@map("earnings")
 }
@@ -257,8 +260,25 @@ model Withdrawal {
   processedAt DateTime?        @map("processed_at")
 
   user User @relation(fields: [userId], references: [id])
+  items WithdrawalItem[]
 
   @@map("withdrawals")
+}
+
+model WithdrawalItem {
+  id           Int      @id @default(autoincrement())
+  withdrawalId Int     @map("withdrawal_id")
+  earningId    Int     @map("earning_id")
+  userId        Int     @map("user_id")
+  amount        Decimal @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  withdrawal Withdrawal @relation(fields: [withdrawalId], references: [id])
+  earning    Earning    @relation(fields: [earningId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([earningId])
+  @@map("withdrawal_items")
 }
 
 enum WithdrawalStatus {

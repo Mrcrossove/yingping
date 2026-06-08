@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { orderApi, reviewApi, userApi } from '@/api/index'
+import { orderApi, paymentApi, reviewApi, userApi } from '@/api/index'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 
@@ -177,8 +177,31 @@ async function handleCancel() {
   await refreshOrder()
 }
 
-function handlePay() {
-  uni.showToast({ title: '支付暂未开通，请联系商家处理', icon: 'none' })
+async function handlePay() {
+  try {
+    await paymentApi.create(order.value.id).catch((error: any) => {
+      const message = error?.message || ''
+      if (!message.includes('已有支付记录')) throw error
+    })
+    const payParams = await paymentApi.jsapi(order.value.id, userStore.user?.openid)
+    await new Promise<void>((resolve, reject) => {
+      uni.requestPayment({
+        provider: 'wxpay',
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType || 'RSA',
+        paySign: payParams.paySign,
+        success: () => resolve(),
+        fail: reject,
+      })
+    })
+    uni.showToast({ title: '支付成功', icon: 'success' })
+    await refreshOrder()
+  } catch (error: any) {
+    if (error?.errMsg?.includes('cancel')) return
+    uni.showToast({ title: error?.message || '支付失败，请稍后重试', icon: 'none' })
+  }
 }
 
 function handleReorder() {

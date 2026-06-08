@@ -25,6 +25,7 @@ export class ExportService {
         salesperson: { select: { realName: true } },
         maker: { select: { realName: true } },
         delivery: { select: { realName: true } },
+        payment: { select: { status: true, transactionId: true, paidAt: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -43,6 +44,12 @@ export class ExportService {
       { header: '业务员', key: 'salesperson', width: 12 },
       { header: '制作员', key: 'maker', width: 12 },
       { header: '配送员', key: 'delivery', width: 12 },
+      { header: '收货人', key: 'receiverName', width: 12 },
+      { header: '收货电话', key: 'receiverPhone', width: 15 },
+      { header: '收货地址', key: 'receiverAddress', width: 36 },
+      { header: '地图位置', key: 'receiverLocationName', width: 24 },
+      { header: '支付状态', key: 'paymentStatus', width: 12 },
+      { header: '微信交易号', key: 'transactionId', width: 28 },
       { header: '下单时间', key: 'createdAt', width: 20 },
     ];
 
@@ -59,6 +66,12 @@ export class ExportService {
           salesperson: order.salesperson?.realName,
           maker: order.maker?.realName,
           delivery: order.delivery?.realName,
+          receiverName: order.receiverName || '',
+          receiverPhone: order.receiverPhone || '',
+          receiverAddress: order.receiverAddress || '',
+          receiverLocationName: order.receiverLocationName || '',
+          paymentStatus: order.payment?.status || '',
+          transactionId: order.payment?.transactionId || '',
           createdAt: order.createdAt.toLocaleString(),
         });
       }

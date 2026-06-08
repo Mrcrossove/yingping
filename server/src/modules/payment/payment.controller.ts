@@ -27,12 +27,20 @@ export class PaymentController {
 
   @Post('notify')
   async payNotify(
-    @Body('orderNo') orderNo: string,
-    @Body('transactionId') transactionId: string,
-    @Headers('x-payment-signature') signature: string,
+    @Body() body: any,
+    @Request() req,
+    @Headers('wechatpay-timestamp') timestamp: string,
+    @Headers('wechatpay-nonce') nonce: string,
+    @Headers('wechatpay-signature') signature: string,
+    @Headers('wechatpay-serial') serial: string,
   ) {
-    const data = await this.paymentService.handlePayNotify(orderNo, transactionId, signature);
-    return ApiResult.success(data);
+    return this.paymentService.handlePayNotify(body, {
+      rawBody: req.rawBody,
+      timestamp,
+      nonce,
+      signature,
+      serial,
+    });
   }
 
   @Get('order/:orderId')
@@ -57,6 +65,6 @@ export class PaymentController {
   @RequirePermission('finance:view')
   async refund(@Param('orderId') orderId: string) {
     const data = await this.paymentService.refund(+orderId);
-    return ApiResult.success(data, '退款成功');
+    return ApiResult.success(data, '退款申请已提交');
   }
 }

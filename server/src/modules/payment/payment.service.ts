@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import { Role } from '@prisma/client';
+import { PaymentStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class PaymentService {
@@ -87,18 +87,33 @@ export class PaymentService {
     return params;
   }
 
-  async handlePayNotify(orderNo: string, transactionId: string, signature: string) {
-    this.verifyInternalNotifySignature(orderNo, transactionId, signature);
-    const payment = await this.prisma.payment.findFirst({ where: { orderNo } });
-    if (!payment) throw new BadRequestException('支付记录不存在');
-    if (payment.status === 'paid') return { success: true };
-    if (payment.status !== 'pending') throw new BadRequestException('支付状态不允许更新');
+  async handlePayNotify(body: any, headers: { rawBody?: Buffer; timestamp?: string; nonce?: string; signature?: string; serial?: string }) {
+    this.verifyWechatNotifySignature(headers);
+    const resource = body?.resource;
+    if (!resource?.ciphertext || !resource?.nonce || !resource?.associated_data) {
+      throw new BadRequestException('支付回调参数不完整');
+    }
 
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { transactionId, status: 'paid', paidAt: new Date() },
+    const data = this.decryptWechatResource(resource);
+    if (data.trade_state !== 'SUCCESS') return { code: 'SUCCESS', message: '成功' };
+
+    const orderNo = data.out_trade_no;
+    const transactionId = data.transaction_id;
+    if (!orderNo || !transactionId) throw new BadRequestException('支付回调订单参数缺失');
+
+    await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findFirst({ where: { orderNo } });
+      if (!payment) throw new BadRequestException('支付记录不存在');
+      if (payment.status === 'paid') return;
+      if (payment.status !== 'pending') throw new BadRequestException('支付状态不允许更新');
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { transactionId, status: 'paid', paidAt: new Date() },
+      });
     });
-    return { success: true };
+
+    return { code: 'SUCCESS', message: '成功' };
   }
 
   async getPaymentByOrder(orderId: number, user: { id: number; role: Role }) {
@@ -132,11 +147,39 @@ export class PaymentService {
     if (!payment) throw new BadRequestException('支付记录不存在');
     if (payment.status !== 'paid') throw new BadRequestException('只能退款已支付的订单');
 
+    const wxConfig = this.getWxPayConfig();
+    const totalFee = Math.round(Number(payment.amount) * 100);
+    const body = {
+      out_trade_no: payment.orderNo,
+      out_refund_no: `RF${payment.orderNo}`,
+      reason: '后台操作退款',
+      amount: {
+        refund: totalFee,
+        total: totalFee,
+        currency: 'CNY',
+      },
+    };
+
+    await axios.post('https://api.mch.weixin.qq.com/v3/refund/domestic/refunds', body, {
+      headers: {
+        Authorization: this.buildWechatAuthorization('POST', '/v3/refund/domestic/refunds', body, wxConfig),
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'beverage-order-server/1.0',
+      },
+      timeout: 15000,
+    });
+
     await this.prisma.payment.update({
       where: { id: payment.id },
-      data: { status: 'refunded' },
+      data: { status: 'refunding' },
     });
+
     return { success: true };
+  }
+
+  async markRefundedByOrderNo(orderNo: string, status: PaymentStatus = 'refunded') {
+    return this.prisma.payment.updateMany({ where: { orderNo }, data: { status } });
   }
 
   private assertCanAccessOrder(order: any, user: { id: number; role: Role }) {
@@ -164,6 +207,12 @@ export class PaymentService {
     };
   }
 
+  private getWechatpayPublicKey() {
+    const publicKeyPath = process.env.WX_PLATFORM_CERT_PATH || process.env.WX_PAY_PUBLIC_KEY_PATH;
+    if (!publicKeyPath) throw new BadRequestException('微信支付平台证书公钥未配置');
+    return fs.readFileSync(publicKeyPath, 'utf8');
+  }
+
   private buildWechatAuthorization(method: string, urlPath: string, body: any, config: ReturnType<PaymentService['getWxPayConfig']>) {
     const timestamp = String(Math.floor(Date.now() / 1000));
     const nonce = crypto.randomUUID().replace(/-/g, '');
@@ -176,18 +225,32 @@ export class PaymentService {
     return crypto.createSign('RSA-SHA256').update(message).sign(privateKey, 'base64');
   }
 
-  private verifyInternalNotifySignature(orderNo: string, transactionId: string, signature: string) {
-    const secret = process.env.PAYMENT_NOTIFY_SECRET;
-    if (!secret) throw new BadRequestException('支付回调密钥未配置');
-    if (!orderNo || !transactionId || !signature) throw new BadRequestException('支付回调参数不完整');
-    const expected = crypto
-      .createHmac('sha256', secret)
-      .update(`${orderNo}.${transactionId}`)
-      .digest('hex');
-    const expectedBuffer = Buffer.from(expected);
-    const actualBuffer = Buffer.from(signature);
-    if (expectedBuffer.length !== actualBuffer.length || !crypto.timingSafeEqual(expectedBuffer, actualBuffer)) {
-      throw new ForbiddenException('支付回调签名无效');
+  private decryptWechatResource(resource: { ciphertext: string; nonce: string; associated_data: string }) {
+    const apiV3Key = process.env.WX_API_V3_KEY;
+    if (!apiV3Key) throw new BadRequestException('微信支付 APIv3 密钥未配置');
+
+    const key = Buffer.from(apiV3Key, 'utf8');
+    if (key.length !== 32) throw new BadRequestException('微信支付 APIv3 密钥长度必须为 32 字节');
+
+    const ciphertext = Buffer.from(resource.ciphertext, 'base64');
+    const authTag = ciphertext.subarray(ciphertext.length - 16);
+    const data = ciphertext.subarray(0, ciphertext.length - 16);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(resource.nonce, 'utf8'));
+    decipher.setAuthTag(authTag);
+    decipher.setAAD(Buffer.from(resource.associated_data, 'utf8'));
+    const decoded = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+    return JSON.parse(decoded);
+  }
+
+  private verifyWechatNotifySignature(headers: { rawBody?: Buffer; timestamp?: string; nonce?: string; signature?: string; serial?: string }) {
+    if (!headers.rawBody || !headers.timestamp || !headers.nonce || !headers.signature) {
+      throw new BadRequestException('微信支付回调签名头不完整');
     }
+    const message = `${headers.timestamp}\n${headers.nonce}\n${headers.rawBody.toString('utf8')}\n`;
+    const ok = crypto
+      .createVerify('RSA-SHA256')
+      .update(message)
+      .verify(this.getWechatpayPublicKey(), headers.signature, 'base64');
+    if (!ok) throw new ForbiddenException('微信支付回调签名无效');
   }
 }

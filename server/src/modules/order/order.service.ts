@@ -30,46 +30,61 @@ export class OrderService {
     const orderNo = this.generateOrderNo();
     const addressSnapshot = await this.resolveAddressSnapshot(dto, merchantId);
 
-    let totalAmount = new Prisma.Decimal(0);
-    const items: { productId: number; quantity: number; price: any }[] = [];
-    for (const item of dto.items) {
-      const quantity = Number(item.quantity);
-      if (!Number.isInteger(quantity) || quantity <= 0) {
-        throw new BadRequestException(`商品 ${item.productId} 数量不正确`);
-      }
-      const product = await this.prisma.product.findUnique({ where: { id: item.productId } });
-      if (!product || product.status === 0) {
-        throw new BadRequestException(`商品 ${item.productId} 不存在或已下架`);
-      }
-      items.push({
-        productId: item.productId,
-        quantity,
-        price: product.price,
-      });
-      totalAmount = totalAmount.add(product.price.mul(quantity));
-    }
+    const order = await this.prisma.$transaction(async (tx) => {
+      let totalAmount = new Prisma.Decimal(0);
+      const items: { productId: number; quantity: number; price: any }[] = [];
+      let stockDeducted = false;
 
-    const order = await this.prisma.order.create({
-      data: {
-        orderNo,
-        merchantId,
-        totalAmount,
-        note: dto.note,
-        ...addressSnapshot,
-        status: 'pending',
-        items: {
-          create: items,
-        },
-        flows: {
-          create: {
-            fromRole: 'merchant',
-            toRole: 'salesperson',
-            operatorId: merchantId,
-            action: '商户下单',
+      for (const item of dto.items) {
+        const productId = Number(item.productId);
+        const quantity = Number(item.quantity);
+        if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+          throw new BadRequestException(`商品 ${item.productId} 数量不正确`);
+        }
+        const product = await tx.product.findUnique({ where: { id: productId } });
+        if (!product || product.status === 0) {
+          throw new BadRequestException(`商品 ${item.productId} 不存在或已下架`);
+        }
+        if (product.stock !== null && product.stock < quantity) {
+          throw new BadRequestException(`${product.name} 库存不足`);
+        }
+
+        if (product.stock !== null) {
+          const changed = await tx.product.updateMany({
+            where: { id: productId, stock: { gte: quantity } },
+            data: { stock: { decrement: quantity } },
+          });
+          if (changed.count !== 1) throw new BadRequestException(`${product.name} 库存不足`);
+          stockDeducted = true;
+        }
+
+        items.push({ productId, quantity, price: product.price });
+        totalAmount = totalAmount.add(product.price.mul(quantity));
+      }
+
+      return tx.order.create({
+        data: {
+          orderNo,
+          merchantId,
+          totalAmount,
+          note: dto.note,
+          ...addressSnapshot,
+          stockDeducted,
+          status: 'pending',
+          items: {
+            create: items,
+          },
+          flows: {
+            create: {
+              fromRole: 'merchant',
+              toRole: 'salesperson',
+              operatorId: merchantId,
+              action: '商户下单',
+            },
           },
         },
-      },
-      include: { items: { include: { product: true } }, flows: true },
+        include: { items: { include: { product: true } }, flows: true },
+      });
     });
 
     await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
@@ -409,19 +424,49 @@ export class OrderService {
     if (order.status === 'delivered' || order.status === 'completed') throw new BadRequestException('已完成的订单无法取消');
     if (user.role === 'merchant' && order.status !== 'pending') throw new BadRequestException('订单已接单，无法自行取消');
 
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'cancelled',
-        flows: {
-          create: {
-            fromRole: user.role,
-            toRole: 'merchant',
-            operatorId: user.id,
-            action: '取消订单',
+    return this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, status: { notIn: ['delivered', 'completed', 'cancelled'] } },
+        data: { status: 'cancelled' },
+      });
+      if (changed.count !== 1) throw new BadRequestException('订单状态已变化，请刷新后重试');
+
+      if (order.stockDeducted) {
+        for (const item of order.items || []) {
+          const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+          if (product?.stock !== null) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+        }
+      }
+
+      await tx.orderFlow.create({
+        data: {
+          orderId,
+          fromRole: user.role,
+          toRole: 'merchant',
+          operatorId: user.id,
+          action: '取消订单',
+        },
+      });
+
+      return tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { product: true } },
+          merchant: { select: { id: true, realName: true, phone: true } },
+          salesperson: { select: { id: true, realName: true, phone: true } },
+          maker: { select: { id: true, realName: true, phone: true } },
+          delivery: { select: { id: true, realName: true, phone: true } },
+          flows: {
+            include: { operator: { select: { id: true, realName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
           },
         },
-      },
+      });
     });
   }
 
