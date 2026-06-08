@@ -179,13 +179,19 @@ async function fetchLeads() {
 
 async function fetchPromoterHome() {
   if (!isPromoter.value) return
-  const [code, qr, stat] = await Promise.all([
+  const [code, stat] = await Promise.all([
     promotionApi.myCode().catch(() => null),
-    promotionApi.wxacode().catch(() => null),
     promotionApi.summary().catch(() => null),
   ])
   myCode.value = code
-  wxacode.value = qr
+  wxacode.value = null
+  if (code) {
+    wxacode.value = await promotionApi.wxacode().catch(() => ({
+      code: code.code,
+      qrcode: null,
+      message: '小程序码生成失败，已显示文本推广码',
+    }))
+  }
   if (stat) Object.assign(summary, stat)
 }
 

@@ -32,7 +32,7 @@ const router = createRouter({
           path: 'orders',
           name: 'Orders',
           component: () => import('@/views/Orders.vue'),
-          meta: { title: '订单管理', icon: 'Document' },
+          meta: { title: '订单管理', icon: 'Tickets' },
         },
         {
           path: 'orders/:id',
@@ -44,19 +44,19 @@ const router = createRouter({
           path: 'products',
           name: 'Products',
           component: () => import('@/views/Products.vue'),
-          meta: { title: '商品管理', icon: 'Goods' },
+          meta: { title: '商品管理', icon: 'MilkTea' },
         },
         {
           path: 'banners',
           name: 'Banners',
           component: () => import('@/views/Banners.vue'),
-          meta: { title: '轮播图管理', icon: 'Picture' },
+          meta: { title: '轮播图管理', icon: 'PictureFilled' },
         },
         {
           path: 'users',
           name: 'Users',
           component: () => import('@/views/Users.vue'),
-          meta: { title: '员工管理', icon: 'User' },
+          meta: { title: '员工管理', icon: 'UserFilled' },
         },
         {
           path: 'merchants',
@@ -68,7 +68,7 @@ const router = createRouter({
           path: 'commissions',
           name: 'Commissions',
           component: () => import('@/views/Commissions.vue'),
-          meta: { title: '提成设置', icon: 'Money' },
+          meta: { title: '提成设置', icon: 'Coin' },
         },
         {
           path: 'earnings',
@@ -92,7 +92,7 @@ const router = createRouter({
           path: 'promotion',
           name: 'Promotion',
           component: () => import('@/views/Promotion.vue'),
-          meta: { title: '推广管理', icon: 'Share' },
+          meta: { title: '推广管理', icon: 'Promotion' },
         },
         {
           path: 'permissions',
@@ -110,7 +110,7 @@ const router = createRouter({
           path: 'payments',
           name: 'Payments',
           component: () => import('@/views/Payments.vue'),
-          meta: { title: '支付记录', icon: 'Wallet' },
+          meta: { title: '支付记录', icon: 'CreditCard' },
         },
         {
           path: 'settings',
