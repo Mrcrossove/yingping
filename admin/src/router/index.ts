@@ -112,6 +112,12 @@ const router = createRouter({
           component: () => import('@/views/Payments.vue'),
           meta: { title: '支付记录', icon: 'Wallet' },
         },
+        {
+          path: 'settings',
+          name: 'Settings',
+          component: () => import('@/views/Settings.vue'),
+          meta: { title: '系统设置', icon: 'Setting' },
+        },
       ],
     },
   ],

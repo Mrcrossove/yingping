@@ -23,6 +23,7 @@ import { AddressModule } from './modules/address/address.module';
 import { ReviewModule } from './modules/review/review.module';
 import { BannerModule } from './modules/banner/banner.module';
 import { LocationModule } from './modules/location/location.module';
+import { SettingModule } from './modules/setting/setting.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { LocationModule } from './modules/location/location.module';
     ReviewModule,
     BannerModule,
     LocationModule,
+    SettingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

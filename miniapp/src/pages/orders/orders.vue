@@ -39,7 +39,7 @@
         <!-- 商户信息 -->
         <view class="o-merchant">
           <text class="o-merchant-name">🏪 {{ order.merchantName }}</text>
-          <text class="o-merchant-phone" @click="callPhone(order.merchantPhone)">📞</text>
+          <text class="o-merchant-phone" @click="callSalesperson(order)">📞</text>
         </view>
 
         <!-- 商品清单（折叠） -->
@@ -78,7 +78,7 @@
             <!-- 商户 -->
             <template v-if="role === 'merchant'">
               <view v-if="order.status === 'delivered'" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
-              <view v-if="order.status === 'pending'" class="btn outline" @click="callPhone(order.salespersonPhone || '')">联系业务员</view>
+              <view v-if="order.status === 'pending'" class="btn outline" @click="callSalesperson(order)">联系业务员</view>
             </template>
           </view>
         </view>
@@ -106,7 +106,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { statusMap, statusColorMap } from '@/utils/order-status'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
-import { orderApi } from '@/api/index'
+import { orderApi, settingApi } from '@/api/index'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -117,6 +117,7 @@ const confirmDialog = reactive({ show: false, title: '', desc: '', orderId: 0, a
 const confirmCallback = ref<(() => void) | null>(null)
 const orders = ref<any[]>([])
 const loading = ref(false)
+const customerServicePhone = ref('')
 
 const tabs = statusMap
 
@@ -157,8 +158,24 @@ async function fetchOrders() {
 function toggleExpand(id: number) { expandedOrderId.value = expandedOrderId.value === id ? null : id }
 function loadMore() {}
 function callPhone(phone: string) {
-  if (!phone) return
+  if (!phone) {
+    uni.showToast({ title: '暂无业务员联系电话', icon: 'none' })
+    return
+  }
   uni.makePhoneCall({ phoneNumber: phone })
+}
+
+function callSalesperson(order: any) {
+  callPhone(order.salespersonPhone || customerServicePhone.value)
+}
+
+async function fetchPublicSettings() {
+  try {
+    const data = await settingApi.publicSettings()
+    customerServicePhone.value = data.customerServicePhone || ''
+  } catch {
+    customerServicePhone.value = ''
+  }
 }
 
 function handleAction(order: any, action: string) {
@@ -200,6 +217,7 @@ function doConfirm() { confirmCallback.value?.() }
 
 onShow(() => {
   userStore.checkLogin()
+  fetchPublicSettings()
   fetchOrders()
 })
 </script>

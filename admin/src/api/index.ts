@@ -85,3 +85,9 @@ export const bannerApi = {
   update: (id: number, data: any) => request.put(`/banners/${id}`, data),
   remove: (id: number) => request.delete(`/banners/${id}`),
 }
+
+export const settingApi = {
+  get: () => request.get('/settings'),
+  updateCustomerServicePhone: (phone: string) =>
+    request.put('/settings/customer-service-phone', { phone }),
+}

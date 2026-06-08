@@ -2,7 +2,7 @@
   "pages": [
     {
       "path": "pages/index/index",
-      "style": { "navigationBarTitleText": "饮品下单" }
+      "style": { "navigationBarTitleText": "栀致饮品" }
     },
     {
       "path": "pages/cart/cart",

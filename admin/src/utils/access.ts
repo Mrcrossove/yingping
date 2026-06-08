@@ -24,6 +24,7 @@ export const ROUTE_ROLES: Record<string, string[]> = {
   Permissions: ['boss'],
   AuditLogs: ['boss', 'admin'],
   Payments: ['boss', 'admin'],
+  Settings: ['boss', 'admin'],
 }
 
 export const ROUTE_PERMISSIONS: Record<string, string> = {
@@ -41,6 +42,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   Permissions: 'permission:manage',
   AuditLogs: 'audit:view',
   Payments: 'finance:view',
+  Settings: 'setting:manage',
 }
 
 export function getUserRole() {
@@ -86,6 +88,7 @@ function routeNameToPath(name: string) {
     Permissions: 'permissions',
     AuditLogs: 'audit-logs',
     Payments: 'payments',
+    Settings: 'settings',
   }
   return map[name] || 'orders'
 }
