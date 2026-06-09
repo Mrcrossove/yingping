@@ -2,7 +2,18 @@
   <view class="page">
     <scroll-view scroll-y class="content">
       <view class="hero">
-        <image v-if="product.image" class="hero-image" :src="imageUrl(product.image)" mode="aspectFill" />
+        <swiper
+          v-if="galleryImages.length"
+          class="hero-swiper"
+          circular
+          indicator-dots
+          indicator-color="rgba(255,255,255,0.55)"
+          indicator-active-color="#ffffff"
+        >
+          <swiper-item v-for="url in galleryImages" :key="url">
+            <image class="hero-image" :src="imageUrl(url)" mode="aspectFill" @click="previewImage(url)" />
+          </swiper-item>
+        </swiper>
         <view v-else class="hero-placeholder">{{ product.name ? product.name[0] : '饮' }}</view>
       </view>
 
@@ -36,11 +47,6 @@
         <text class="desc">{{ product.storageText }}</text>
       </view>
 
-      <view v-if="detailImages.length" class="section image-section">
-        <text class="section-title">详情图片</text>
-        <image v-for="(url, index) in detailImages" :key="url + index" class="detail-image" :src="imageUrl(url)" mode="widthFix" />
-      </view>
-
       <view v-if="loading" class="empty">加载中...</view>
       <view v-if="!loading && !product.id" class="empty">商品不存在或已下架</view>
       <view class="bottom-space"></view>
@@ -70,7 +76,13 @@ const loading = ref(false)
 const product = ref<any>({})
 const quantity = ref(1)
 
-const detailImages = computed(() => normalizeImages(product.value.detailImages))
+const galleryImages = computed(() => {
+  const images = [
+    product.value.image,
+    ...normalizeImages(product.value.detailImages),
+  ].filter(Boolean)
+  return Array.from(new Set(images))
+})
 
 function imageUrl(url: string) {
   if (!url) return ''
@@ -87,6 +99,14 @@ function normalizeImages(value: any) {
   } catch {
     return []
   }
+}
+
+function previewImage(url: string) {
+  const urls = galleryImages.value.map(imageUrl)
+  uni.previewImage({
+    urls,
+    current: imageUrl(url),
+  })
 }
 
 async function fetchProduct(id: number) {
@@ -157,6 +177,7 @@ onShareTimeline(() => ({
 .page { min-height: 100vh; background: #eef2f6; }
 .content { height: 100vh; box-sizing: border-box; }
 .hero { height: 320px; background: #dfe5ee; display: flex; align-items: center; justify-content: center; }
+.hero-swiper { width: 100%; height: 100%; }
 .hero-image { width: 100%; height: 100%; display: block; }
 .hero-placeholder { width: 88px; height: 88px; border-radius: 18px; background: #e8f0fe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; }
 .summary { margin: -18px 12px 12px; padding: 16px; background: #fff; border-radius: 12px; position: relative; box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
@@ -171,8 +192,6 @@ onShareTimeline(() => ({
 .section { margin: 12px; padding: 15px; background: #fff; border-radius: 12px; }
 .section-title { display: block; font-size: 15px; font-weight: 800; color: #172033; margin-bottom: 9px; }
 .desc { display: block; font-size: 14px; line-height: 22px; color: #4c5667; white-space: pre-wrap; }
-.image-section { padding-bottom: 8px; }
-.detail-image { width: 100%; display: block; border-radius: 10px; margin-bottom: 10px; background: #f5f7fa; }
 .empty { text-align: center; color: #8c8c8c; font-size: 14px; padding: 36px 0; }
 .bottom-space { height: 92px; }
 .bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -6px 20px rgba(15,23,42,0.08); display: grid; grid-template-columns: 116px 1fr 1fr; gap: 10px; align-items: center; box-sizing: border-box; }
