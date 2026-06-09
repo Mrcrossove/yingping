@@ -2,18 +2,50 @@
   <div>
     <el-card>
       <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-header">
           <span>订单管理</span>
-          <div>
-            <el-select v-model="filterStatus" placeholder="订单状态" clearable style="width: 130px; margin-right: 10px;">
-              <el-option v-for="(v, k) in statusMap" :key="k" :label="v" :value="k" />
-            </el-select>
-            <el-input v-model="keyword" placeholder="搜索订单号" clearable style="width: 200px; margin-right: 10px;" @keyup.enter="fetchOrders" />
-            <el-button type="primary" @click="fetchOrders">查询</el-button>
-            <el-button v-if="canExport" type="success" @click="handleExport" style="margin-left: 8px;">导出Excel</el-button>
-          </div>
         </div>
       </template>
+      <div class="filter-bar">
+        <el-input v-model="keyword" placeholder="订单号" clearable class="filter-item keyword-input" @keyup.enter="handleSearch" />
+        <el-select v-model="filterStatus" placeholder="订单状态" clearable class="filter-item status-select">
+          <el-option v-for="(v, k) in statusMap" :key="k" :label="v" :value="k" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          class="filter-item date-range"
+        />
+        <el-select v-model="staffRole" placeholder="人员类型" clearable class="filter-item staff-role" @change="handleStaffRoleChange">
+          <el-option label="商户" value="merchant" />
+          <el-option label="业务员" value="salesperson" />
+          <el-option label="制作员" value="maker" />
+          <el-option label="配送员" value="delivery" />
+        </el-select>
+        <el-select
+          v-model="staffId"
+          placeholder="选择人员"
+          clearable
+          filterable
+          :disabled="!staffRole"
+          :loading="staffLoading"
+          class="filter-item staff-select"
+        >
+          <el-option
+            v-for="item in staffOptions"
+            :key="item.id"
+            :label="item.phone ? `${item.realName} (${item.phone})` : item.realName"
+            :value="item.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="handleSearch">查询</el-button>
+        <el-button @click="handleReset">重置</el-button>
+        <el-button v-if="canExport" type="success" @click="handleExport">导出Excel</el-button>
+      </div>
       <div style="margin-bottom: 12px;" v-if="canDispatch && selectedOrders.length > 0">
         <el-button type="warning" @click="showBatchDialog">批量派单 ({{ selectedOrders.length }} 单)</el-button>
       </div>
@@ -92,6 +124,11 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const filterStatus = ref('')
+const dateRange = ref<[string, string] | null>(null)
+const staffRole = ref('')
+const staffId = ref<number | null>(null)
+const staffOptions = ref<any[]>([])
+const staffLoading = ref(false)
 const role = computed(() => userStore.role)
 const canDispatch = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
 const canExport = computed(() => ['boss', 'admin'].includes(role.value))
@@ -107,12 +144,28 @@ function statusTagType(status: string) {
   return map[status] || ''
 }
 
+function buildQueryParams() {
+  const params: any = {}
+  if (keyword.value.trim()) params.keyword = keyword.value.trim()
+  if (filterStatus.value) params.status = filterStatus.value
+  if (dateRange.value?.[0]) params.startDate = dateRange.value[0]
+  if (dateRange.value?.[1]) params.endDate = dateRange.value[1]
+  if (staffRole.value && staffId.value) {
+    const keyMap: Record<string, string> = {
+      merchant: 'merchantId',
+      salesperson: 'salespersonId',
+      maker: 'makerId',
+      delivery: 'deliveryId',
+    }
+    params[keyMap[staffRole.value]] = staffId.value
+  }
+  return params
+}
+
 async function fetchOrders() {
   loading.value = true
   try {
-    const params: any = { page: page.value, pageSize: pageSize.value }
-    if (keyword.value) params.keyword = keyword.value
-    if (filterStatus.value) params.status = filterStatus.value
+    const params: any = { page: page.value, pageSize: pageSize.value, ...buildQueryParams() }
     const data = await orderApi.list(params)
     orders.value = data.list
     total.value = data.total
@@ -121,11 +174,38 @@ async function fetchOrders() {
   }
 }
 
+function handleSearch() {
+  page.value = 1
+  fetchOrders()
+}
+
+function handleReset() {
+  keyword.value = ''
+  filterStatus.value = ''
+  dateRange.value = null
+  staffRole.value = ''
+  staffId.value = null
+  staffOptions.value = []
+  page.value = 1
+  fetchOrders()
+}
+
+async function handleStaffRoleChange() {
+  staffId.value = null
+  staffOptions.value = []
+  if (!staffRole.value) return
+  staffLoading.value = true
+  try {
+    const data = await userApi.list({ role: staffRole.value, pageSize: 500 })
+    staffOptions.value = data.list || []
+  } finally {
+    staffLoading.value = false
+  }
+}
+
 function handleExport() {
   if (!canExport.value) return
-  const params: any = {}
-  if (filterStatus.value) params.status = filterStatus.value
-  if (keyword.value) params.keyword = keyword.value
+  const params = buildQueryParams()
   const url = exportApi.orders(params)
   const a = document.createElement('a')
   a.href = url
@@ -162,3 +242,14 @@ async function handleBatchDispatch() {
 
 onMounted(fetchOrders)
 </script>
+
+<style scoped>
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-item { flex-shrink: 0; }
+.keyword-input { width: 180px; }
+.status-select { width: 130px; }
+.date-range { width: 260px; }
+.staff-role { width: 120px; }
+.staff-select { width: 210px; }
+</style>

@@ -7,10 +7,23 @@ import { Response } from 'express';
 export class ExportService {
   constructor(private prisma: PrismaService) {}
 
-  async exportOrders(res: Response, query: { startDate?: string; endDate?: string; status?: string; keyword?: string }) {
+  async exportOrders(res: Response, query: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    keyword?: string;
+    merchantId?: string;
+    salespersonId?: string;
+    makerId?: string;
+    deliveryId?: string;
+  }) {
     const where: any = {};
     if (query.status) where.status = query.status;
     if (query.keyword) where.orderNo = { contains: query.keyword };
+    if (query.merchantId) where.merchantId = +query.merchantId;
+    if (query.salespersonId) where.salespersonId = +query.salespersonId;
+    if (query.makerId) where.makerId = +query.makerId;
+    if (query.deliveryId) where.deliveryId = +query.deliveryId;
     if (query.startDate || query.endDate) {
       where.createdAt = {};
       if (query.startDate) where.createdAt.gte = new Date(query.startDate);
