@@ -5,6 +5,7 @@
       <view class="section">
         <view class="row"><text class="label">订单号</text><text>{{ order.orderNo }}</text></view>
         <view class="row"><text class="label">状态</text><text class="status">{{ statusMap[order.status] }}</text></view>
+        <view class="row"><text class="label">支付状态</text><text class="status">{{ paymentStatusText }}</text></view>
         <view class="row"><text class="label">金额</text><text class="price">¥{{ Number(order.totalAmount).toFixed(2) }}</text></view>
         <view class="row" v-if="order.note"><text class="label">备注</text><text>{{ order.note }}</text></view>
       </view>
@@ -60,7 +61,10 @@
       <!-- 员工操作 -->
       <view v-if="canOperate" class="action-bar">
         <button v-if="canMerchantCancel" @click="handleCancel" class="action-btn danger">取消订单</button>
+        <button v-if="canRequestRefund" @click="handleRequestRefund" class="action-btn danger">申请退款</button>
         <button v-if="canPay" @click="handlePay" class="action-btn primary">去支付</button>
+        <button v-if="isRefunding" class="action-btn disabled" disabled>退款中</button>
+        <button v-if="isRefunded" class="action-btn disabled" disabled>已退款</button>
         <button v-if="canReorder" @click="handleReorder" class="action-btn">再次下单</button>
         <button v-if="userStore.user?.role === 'salesperson' && order.status === 'pending'" @click="handleAccept" class="action-btn">接单</button>
         <button v-if="canDispatchMaker" @click="handleDispatchMaker" class="action-btn primary">派单制作</button>
@@ -91,19 +95,32 @@ const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
   made: '已制作', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
 }
+const paymentStatusMap: Record<string, string> = {
+  pending: '待支付',
+  paid: '已支付',
+  refunding: '退款中',
+  refunded: '已退款',
+  failed: '支付失败',
+}
 
 const canOperate = computed(() => {
   if (!order.value || !userStore.user) return false
   const role = userStore.user.role
-  if (role === 'merchant' && ['pending', 'completed', 'delivered'].includes(order.value.status)) return true
+  if (role === 'merchant' && ['pending', 'completed', 'delivered', 'cancelled'].includes(order.value.status)) return true
   if (role === 'salesperson' && ['pending', 'accepted', 'made'].includes(order.value.status)) return true
   if (role === 'maker' && (order.value.status === 'making')) return true
   if (role === 'delivery' && (order.value.status === 'made' || order.value.status === 'delivering')) return true
   return false
 })
 
-const canMerchantCancel = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending')
-const canPay = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending')
+const paymentStatus = computed(() => order.value?.payment?.status || '')
+const paymentStatusText = computed(() => paymentStatus.value ? paymentStatusMap[paymentStatus.value] || paymentStatus.value : '未创建支付单')
+const isPaid = computed(() => paymentStatus.value === 'paid')
+const isRefunding = computed(() => paymentStatus.value === 'refunding')
+const isRefunded = computed(() => paymentStatus.value === 'refunded')
+const canMerchantCancel = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && !isPaid.value && !isRefunding.value && !isRefunded.value)
+const canRequestRefund = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && isPaid.value)
+const canPay = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && !paymentStatus.value)
 const canReorder = computed(() => userStore.user?.role === 'merchant' && ['completed', 'delivered'].includes(order.value?.status))
 const canDispatchMaker = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'accepted')
 const canDispatchDelivery = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'made')
@@ -172,9 +189,29 @@ async function selectDispatchStaff(role: 'maker' | 'delivery') {
 }
 
 async function handleCancel() {
-  await orderApi.cancel(order.value.id)
-  uni.showToast({ title: '订单已取消', icon: 'success' })
-  await refreshOrder()
+  uni.showModal({
+    title: '取消订单',
+    content: '确认取消该未支付订单？',
+    success: async (res: any) => {
+      if (!res.confirm) return
+      await orderApi.cancel(order.value.id)
+      uni.showToast({ title: '订单已取消', icon: 'success' })
+      await refreshOrder()
+    },
+  })
+}
+
+async function handleRequestRefund() {
+  uni.showModal({
+    title: '申请退款',
+    content: '订单将取消并发起微信原路退款，确认继续？',
+    success: async (res: any) => {
+      if (!res.confirm) return
+      await paymentApi.requestRefund(order.value.id)
+      uni.showToast({ title: '退款申请已提交', icon: 'success' })
+      await refreshOrder()
+    },
+  })
 }
 
 async function handlePay() {
@@ -272,6 +309,7 @@ async function handleDeliveryComplete() {
 .action-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
 .action-btn.primary { background: #67C23A; }
 .action-btn.danger { background: #f56c6c; }
+.action-btn.disabled { background: #c0c4cc; color: #fff; }
 .rating-row { display: flex; gap: 6px; margin-bottom: 10px; }
 .star { font-size: 26px; color: #ddd; }
 .star.active { color: #f5a623; }

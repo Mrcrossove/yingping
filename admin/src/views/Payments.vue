@@ -73,9 +73,9 @@ async function fetchList() {
 }
 
 async function handleRefund(orderId: number) {
-  await ElMessageBox.confirm('当前退款只会更新系统状态，不会调用微信原路退款，确定继续？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确认发起微信原路退款？退款提交后订单将同步取消，支付记录进入退款中。', '提示', { type: 'warning' })
   await paymentApi.refund(orderId)
-  ElMessage.success('已标记退款')
+  ElMessage.success('退款申请已提交')
   fetchList()
 }
 

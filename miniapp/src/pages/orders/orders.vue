@@ -30,6 +30,9 @@
           <view class="o-status-badge" :style="{ background: statusColorMap[order.status] }">
             {{ statusMap[order.status] }}
           </view>
+          <view class="payment-badge" v-if="order.paymentStatusText">
+            {{ order.paymentStatusText }}
+          </view>
           <!-- 推广员佣金 -->
           <view class="commission-tag" v-if="role === 'promoter' && order.commission">
             预计佣金 ¥{{ order.commission }}
@@ -77,6 +80,8 @@
             </template>
             <!-- 商户 -->
             <template v-if="role === 'merchant'">
+              <view v-if="canCancel(order)" class="btn outline danger" @click="handleAction(order, 'cancel')">取消订单</view>
+              <view v-if="canRefund(order)" class="btn danger" @click="handleAction(order, 'refund')">申请退款</view>
               <view v-if="order.status === 'delivered'" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
               <view v-if="order.status === 'pending'" class="btn outline" @click="callSalesperson(order)">联系业务员</view>
             </template>
@@ -106,7 +111,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { statusMap, statusColorMap } from '@/utils/order-status'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
-import { orderApi, settingApi } from '@/api/index'
+import { orderApi, paymentApi, settingApi } from '@/api/index'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -120,6 +125,13 @@ const loading = ref(false)
 const customerServicePhone = ref('')
 
 const tabs = statusMap
+const paymentStatusMap: Record<string, string> = {
+  pending: '待支付',
+  paid: '已支付',
+  refunding: '退款中',
+  refunded: '已退款',
+  failed: '支付失败',
+}
 
 const stats = computed(() => {
   const counts: Record<string, number> = {}
@@ -146,6 +158,8 @@ async function fetchOrders() {
       merchantName: order.merchant?.realName || '-',
       merchantPhone: order.merchant?.phone || '',
       salespersonPhone: order.salesperson?.phone || '',
+      paymentStatus: order.payment?.status || '',
+      paymentStatusText: order.payment?.status ? paymentStatusMap[order.payment.status] || order.payment.status : '未支付',
       createdAt: new Date(order.createdAt).toLocaleString(),
     }))
   } catch {
@@ -169,6 +183,14 @@ function callSalesperson(order: any) {
   callPhone(order.salespersonPhone || customerServicePhone.value)
 }
 
+function canCancel(order: any) {
+  return order.status === 'pending' && !['paid', 'refunding', 'refunded'].includes(order.paymentStatus)
+}
+
+function canRefund(order: any) {
+  return order.status === 'pending' && order.paymentStatus === 'paid'
+}
+
 async function fetchPublicSettings() {
   try {
     const data = await settingApi.publicSettings()
@@ -182,6 +204,7 @@ function handleAction(order: any, action: string) {
   const titles: Record<string, string> = {
     accept: '确认接单', 'dispatch-maker': '派单给制作员', 'dispatch-delivery': '分配配送员',
     'maker-complete': '制作完成', 'delivery-done': '确认送达', reorder: '再次下单',
+    cancel: '取消订单', refund: '申请退款',
   }
   confirmDialog.show = true
   confirmDialog.title = titles[action] || action
@@ -192,6 +215,8 @@ function handleAction(order: any, action: string) {
     if (action === 'accept') await orderApi.accept(order.id)
     else if (action === 'maker-complete') await orderApi.makerComplete(order.id)
     else if (action === 'delivery-done') await orderApi.deliveryComplete(order.id)
+    else if (action === 'cancel') await orderApi.cancel(order.id)
+    else if (action === 'refund') await paymentApi.requestRefund(order.id)
     else if (action === 'reorder') {
       order.items.forEach((item: any) => {
         cartStore.addItem({
@@ -239,6 +264,7 @@ onShow(() => {
 .o-time { font-size: 11px; color: #999; display: block; margin-top: 2px; }
 .o-status-badge { padding: 4px 12px; border-radius: 12px; color: #fff; font-size: 12px; font-weight: 600; }
 .commission-tag { position: absolute; right: 0; top: -4px; font-size: 10px; color: #e8453c; background: #fff0f0; padding: 2px 8px; border-radius: 8px; }
+.payment-badge { margin-left: 6px; padding: 4px 8px; border-radius: 12px; color: #606266; background: #f2f3f5; font-size: 11px; font-weight: 600; }
 .o-merchant { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .o-merchant-name { font-size: 14px; color: #333; }
 .o-merchant-phone { font-size: 18px; }
@@ -259,6 +285,8 @@ onShow(() => {
 .btn.warning { background: #E6A23C; }
 .btn.success { background: #67C23A; }
 .btn.outline { border: 1px solid #1a73e8; color: #1a73e8; background: #fff; }
+.btn.danger { background: #f56c6c; }
+.btn.outline.danger { border-color: #f56c6c; color: #f56c6c; background: #fff; }
 .empty { text-align: center; padding: 60px 0; color: #999; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: center; justify-content: center; }
 .confirm-box { width: 300px; background: #fff; border-radius: 16px; padding: 24px; }

@@ -43,6 +43,24 @@ export class PaymentController {
     });
   }
 
+  @Post('refund-notify')
+  async refundNotify(
+    @Body() body: any,
+    @Request() req,
+    @Headers('wechatpay-timestamp') timestamp: string,
+    @Headers('wechatpay-nonce') nonce: string,
+    @Headers('wechatpay-signature') signature: string,
+    @Headers('wechatpay-serial') serial: string,
+  ) {
+    return this.paymentService.handleRefundNotify(body, {
+      rawBody: req.rawBody,
+      timestamp,
+      nonce,
+      signature,
+      serial,
+    });
+  }
+
   @Get('order/:orderId')
   @UseGuards(JwtAuthGuard)
   async getByOrder(@Param('orderId') orderId: string, @Request() req) {
@@ -63,8 +81,16 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('boss', 'admin')
   @RequirePermission('finance:view')
-  async refund(@Param('orderId') orderId: string) {
-    const data = await this.paymentService.refund(+orderId);
+  async refund(@Param('orderId') orderId: string, @Request() req) {
+    const data = await this.paymentService.refund(+orderId, req.user);
+    return ApiResult.success(data, '退款申请已提交');
+  }
+
+  @Post('request-refund/:orderId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('merchant')
+  async requestRefund(@Param('orderId') orderId: string, @Request() req) {
+    const data = await this.paymentService.refund(+orderId, req.user);
     return ApiResult.success(data, '退款申请已提交');
   }
 }

@@ -16,6 +16,7 @@ export class PaymentService {
     });
     if (!order) throw new BadRequestException('订单不存在');
     this.assertCanAccessOrder(order, user);
+    if (order.status !== 'pending') throw new BadRequestException('当前订单状态不允许支付');
     if (order.payment) throw new BadRequestException('已有支付记录');
 
     const payment = await this.prisma.payment.create({
@@ -38,6 +39,7 @@ export class PaymentService {
     });
     if (!payment) throw new BadRequestException('支付记录不存在');
     this.assertCanAccessOrder(payment.order, user);
+    if (payment.order.status !== 'pending') throw new BadRequestException('当前订单状态不允许支付');
     if (payment.status !== 'pending') throw new BadRequestException('订单已支付');
 
     const wxConfig = this.getWxPayConfig();
@@ -142,10 +144,19 @@ export class PaymentService {
     return { list, total, page, pageSize };
   }
 
-  async refund(orderId: number) {
-    const payment = await this.prisma.payment.findUnique({ where: { orderId } });
+  async refund(orderId: number, user?: { id: number; role: Role }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId },
+      include: { order: { include: { items: true } } },
+    });
     if (!payment) throw new BadRequestException('支付记录不存在');
     if (payment.status !== 'paid') throw new BadRequestException('只能退款已支付的订单');
+    if (user) {
+      this.assertCanAccessOrder(payment.order, user);
+      if (user.role === 'merchant' && payment.order.status !== 'pending') {
+        throw new BadRequestException('订单已接单，请联系商家处理退款');
+      }
+    }
 
     const wxConfig = this.getWxPayConfig();
     const totalFee = Math.round(Number(payment.amount) * 100);
@@ -153,6 +164,7 @@ export class PaymentService {
       out_trade_no: payment.orderNo,
       out_refund_no: `RF${payment.orderNo}`,
       reason: '后台操作退款',
+      notify_url: process.env.WX_REFUND_NOTIFY_URL || wxConfig.notifyUrl.replace('/payments/notify', '/payments/refund-notify'),
       amount: {
         refund: totalFee,
         total: totalFee,
@@ -170,9 +182,40 @@ export class PaymentService {
       timeout: 15000,
     });
 
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'refunding' },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'refunding' },
+      });
+
+      const changed = await tx.order.updateMany({
+        where: { id: payment.orderId, status: { notIn: ['delivered', 'completed', 'cancelled'] } },
+        data: { status: 'cancelled' },
+      });
+
+      if (changed.count === 1 && payment.order.stockDeducted) {
+        for (const item of payment.order.items || []) {
+          const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+          if (product?.stock !== null) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+        }
+      }
+
+      if (changed.count === 1) {
+        await tx.orderFlow.create({
+          data: {
+            orderId: payment.orderId,
+            fromRole: user?.role || 'admin',
+            toRole: 'merchant',
+            operatorId: user?.id || payment.userId,
+            action: '发起退款并取消订单',
+          },
+        });
+      }
     });
 
     return { success: true };
@@ -180,6 +223,24 @@ export class PaymentService {
 
   async markRefundedByOrderNo(orderNo: string, status: PaymentStatus = 'refunded') {
     return this.prisma.payment.updateMany({ where: { orderNo }, data: { status } });
+  }
+
+  async handleRefundNotify(body: any, headers: { rawBody?: Buffer; timestamp?: string; nonce?: string; signature?: string; serial?: string }) {
+    this.verifyWechatNotifySignature(headers);
+    const resource = body?.resource;
+    if (!resource?.ciphertext || !resource?.nonce || !resource?.associated_data) {
+      throw new BadRequestException('退款回调参数不完整');
+    }
+
+    const data = this.decryptWechatResource(resource);
+    const orderNo = data.out_trade_no;
+    if (!orderNo) throw new BadRequestException('退款回调订单参数缺失');
+
+    if (data.refund_status === 'SUCCESS') {
+      await this.markRefundedByOrderNo(orderNo, 'refunded');
+    }
+
+    return { code: 'SUCCESS', message: '成功' };
   }
 
   private assertCanAccessOrder(order: any, user: { id: number; role: Role }) {

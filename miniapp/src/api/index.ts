@@ -60,6 +60,7 @@ export const settingApi = {
 export const paymentApi = {
   create: (orderId: number) => post(`/payments/create/${orderId}`),
   jsapi: (orderId: number, openid?: string) => post(`/payments/jsapi/${orderId}`, { openid }),
+  requestRefund: (orderId: number) => post(`/payments/request-refund/${orderId}`),
 }
 
 export const reviewApi = {

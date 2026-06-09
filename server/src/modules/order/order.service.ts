@@ -147,6 +147,7 @@ export class OrderService {
         salesperson: { select: { id: true, realName: true, phone: true } },
         maker: { select: { id: true, realName: true, phone: true } },
         delivery: { select: { id: true, realName: true, phone: true } },
+        payment: true,
         flows: {
           include: { operator: { select: { id: true, realName: true, role: true } } },
           orderBy: { createdAt: 'asc' },
@@ -397,6 +398,7 @@ export class OrderService {
           salesperson: { select: { id: true, realName: true, phone: true } },
           maker: { select: { id: true, realName: true, phone: true } },
           delivery: { select: { id: true, realName: true, phone: true } },
+          payment: true,
           flows: {
             include: { operator: { select: { id: true, realName: true, role: true } } },
             orderBy: { createdAt: 'asc' },
@@ -422,6 +424,10 @@ export class OrderService {
     const order = await this.findOne(orderId);
     if (!this.canAccessOrder(order, user)) throw new ForbiddenException('无权取消该订单');
     if (order.status === 'delivered' || order.status === 'completed') throw new BadRequestException('已完成的订单无法取消');
+    const paymentStatus = order.payment?.status;
+    if (paymentStatus && ['paid', 'refunding', 'refunded'].includes(paymentStatus)) {
+      throw new BadRequestException('已支付订单不能直接取消，请申请退款');
+    }
     if (user.role === 'merchant' && order.status !== 'pending') throw new BadRequestException('订单已接单，无法自行取消');
 
     return this.prisma.$transaction(async (tx) => {
@@ -443,6 +449,13 @@ export class OrderService {
         }
       }
 
+      if (order.payment?.status === 'pending') {
+        await tx.payment.update({
+          where: { orderId },
+          data: { status: 'failed' },
+        });
+      }
+
       await tx.orderFlow.create({
         data: {
           orderId,
@@ -461,6 +474,7 @@ export class OrderService {
           salesperson: { select: { id: true, realName: true, phone: true } },
           maker: { select: { id: true, realName: true, phone: true } },
           delivery: { select: { id: true, realName: true, phone: true } },
+          payment: true,
           flows: {
             include: { operator: { select: { id: true, realName: true, role: true } } },
             orderBy: { createdAt: 'asc' },
