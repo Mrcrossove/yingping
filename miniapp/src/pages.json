@@ -5,6 +5,10 @@
       "style": { "navigationBarTitleText": "栀致饮品" }
     },
     {
+      "path": "pages/home/index",
+      "style": { "navigationBarTitleText": "栀致饮品" }
+    },
+    {
       "path": "pages/cart/cart",
       "style": { "navigationBarTitleText": "购物车" }
     },
@@ -15,6 +19,10 @@
     {
       "path": "pages/order-detail/order-detail",
       "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/product-detail/product-detail",
+      "style": { "navigationBarTitleText": "商品详情" }
     },
     {
       "path": "pages/mine/mine",

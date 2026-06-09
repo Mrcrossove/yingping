@@ -48,7 +48,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="productDialogVisible" :title="productForm.id ? '编辑商品' : '新增商品'" width="500px">
+    <el-dialog v-model="productDialogVisible" :title="productForm.id ? '编辑商品' : '新增商品'" width="680px">
       <el-form ref="productFormRef" :model="productForm" :rules="productRules" label-width="100px">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="productForm.name" />
@@ -85,6 +85,34 @@
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="productForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-divider content-position="left">商品详情</el-divider>
+        <el-form-item label="详情介绍">
+          <el-input v-model="productForm.detailDescription" type="textarea" :rows="4" placeholder="展示在小程序商品详情页的详细介绍" />
+        </el-form-item>
+        <el-form-item label="详情图片">
+          <div class="detail-images">
+            <div v-for="(url, index) in productForm.detailImages" :key="url + index" class="detail-image-item">
+              <img :src="imageUrl(url)" />
+              <el-button class="detail-image-remove" type="danger" circle size="small" @click="removeDetailImage(index)">×</el-button>
+            </div>
+            <el-upload
+              class="detail-image-uploader"
+              action="#"
+              :show-file-list="false"
+              :http-request="handleDetailImageUpload"
+              accept="image/*"
+            >
+              <div class="detail-upload-placeholder">上传详情图</div>
+            </el-upload>
+          </div>
+          <div class="upload-tip">可上传多张，按上传顺序展示在小程序详情页。</div>
+        </el-form-item>
+        <el-form-item label="规格说明">
+          <el-input v-model="productForm.specText" type="textarea" :rows="2" placeholder="如包装规格、容量、口味等" />
+        </el-form-item>
+        <el-form-item label="储存配送">
+          <el-input v-model="productForm.storageText" type="textarea" :rows="2" placeholder="如储存条件、配送说明等" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="productForm.status" :active-value="1" :inactive-value="0" active-text="上架" inactive-text="下架" />
@@ -137,7 +165,21 @@ const productRules: FormRules = {
 }
 
 function createEmptyProduct() {
-  return { name: '', categoryId: null, price: 0, image: '', unit: '杯', description: '', status: 1, stock: 0, minStock: 10 }
+  return {
+    name: '',
+    categoryId: null,
+    price: 0,
+    image: '',
+    unit: '杯',
+    description: '',
+    detailDescription: '',
+    detailImages: [],
+    specText: '',
+    storageText: '',
+    status: 1,
+    stock: 0,
+    minStock: 10,
+  }
 }
 
 function imageUrl(url: string) {
@@ -164,7 +206,11 @@ async function fetchCategories() {
 
 function showProductDialog(row?: any) {
   productForm.value = row
-    ? { ...row, categoryId: row.categoryId ?? row.category?.id ?? null }
+    ? {
+        ...row,
+        categoryId: row.categoryId ?? row.category?.id ?? null,
+        detailImages: normalizeDetailImages(row.detailImages),
+      }
     : createEmptyProduct()
   productDialogVisible.value = true
   productFormRef.value?.clearValidate()
@@ -200,6 +246,27 @@ async function handleImageUpload(options: any) {
   ElMessage.success('图片上传成功')
 }
 
+async function handleDetailImageUpload(options: any) {
+  const data = await fileApi.upload(options.file)
+  productForm.value.detailImages = [...normalizeDetailImages(productForm.value.detailImages), data.url]
+  ElMessage.success('详情图片上传成功')
+}
+
+function removeDetailImage(index: number) {
+  productForm.value.detailImages = normalizeDetailImages(productForm.value.detailImages).filter((_, i) => i !== index)
+}
+
+function normalizeDetailImages(value: any) {
+  if (!value) return []
+  if (Array.isArray(value)) return value.filter(Boolean)
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : []
+  } catch {
+    return []
+  }
+}
+
 function buildProductPayload() {
   const form = productForm.value
   return {
@@ -209,6 +276,10 @@ function buildProductPayload() {
     image: form.image || undefined,
     unit: form.unit || '杯',
     description: form.description || '',
+    detailDescription: form.detailDescription || '',
+    detailImages: normalizeDetailImages(form.detailImages),
+    specText: form.specText || '',
+    storageText: form.storageText || '',
     status: Number(form.status ?? 1),
     stock: form.stock === undefined || form.stock === null || form.stock === '' ? undefined : Number(form.stock),
     minStock: form.minStock === undefined || form.minStock === null || form.minStock === '' ? undefined : Number(form.minStock),
@@ -288,5 +359,48 @@ onMounted(() => {
   color: #909399;
   font-size: 12px;
   line-height: 18px;
+}
+.detail-images {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.detail-image-item {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  position: relative;
+  background: #f5f7fa;
+}
+.detail-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.detail-image-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.detail-image-uploader {
+  width: 96px;
+  height: 96px;
+}
+.detail-upload-placeholder {
+  width: 96px;
+  height: 96px;
+  border: 1px dashed #c0c4cc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background: #fafafa;
+  font-size: 13px;
+  box-sizing: border-box;
 }
 </style>

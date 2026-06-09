@@ -43,7 +43,7 @@
 
     <!-- 商品列表 — B2B批发样式 -->
     <scroll-view scroll-y class="product-list" refresher-enabled @refresherrefresh="onRefresh">
-      <view v-for="p in filteredProducts" :key="p.id" class="product-card">
+      <view v-for="p in filteredProducts" :key="p.id" class="product-card" @click="goProductDetail(p.id)">
         <!-- 商品图 -->
         <view class="p-image">
           <image v-if="p.image" class="product-image" :src="imageUrl(p.image)" mode="aspectFill" />
@@ -67,11 +67,11 @@
           <!-- 数量 + 加购 -->
           <view class="p-action">
             <view class="stepper">
-              <text class="step-btn" @click="changeQty(p.id, -1)">−</text>
-              <input class="step-input" type="number" :value="getQty(p.id)" @input="onQtyInput($event, p.id)" />
-              <text class="step-btn" @click="changeQty(p.id, 1)">+</text>
+              <text class="step-btn" @click.stop="changeQty(p.id, -1)">−</text>
+              <input class="step-input" type="number" :value="getQty(p.id)" @click.stop @input="onQtyInput($event, p.id)" />
+              <text class="step-btn" @click.stop="changeQty(p.id, 1)">+</text>
             </view>
-            <view class="add-cart-btn" @click="addToCart(p)">加入购物车</view>
+            <view class="add-cart-btn" @click.stop="addToCart(p)">加入购物车</view>
           </view>
         </view>
       </view>
@@ -96,7 +96,7 @@ import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { bannerApi, categoryApi, productApi } from '@/api/index'
 import { API_BASE_URL } from '@/config'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 const cartStore = useCartStore()
 const userStore = useUserStore()
@@ -245,7 +245,18 @@ function onRefresh() {
   })
 }
 function goCart() { uni.switchTab({ url: '/pages/cart/cart' }) }
+function goProductDetail(id: number) { uni.navigateTo({ url: `/pages/product-detail/product-detail?id=${id}` }) }
+
+function shareQuery() {
+  const promoterCode = uni.getStorageSync('promoterCode')
+  return promoterCode ? `promoterCode=${encodeURIComponent(promoterCode)}` : ''
+}
+
 onLoad((options: any) => {
+  uni.showShareMenu({
+    withShareTicket: true,
+    menus: ['shareAppMessage', 'shareTimeline'] as any,
+  })
   userStore.capturePromoterCode({ query: options })
   const categoryId = Number(options?.categoryId)
   if (categoryId) currentCategory.value = categoryId
@@ -255,6 +266,16 @@ onMounted(() => {
   fetchCategories()
   fetchProducts()
 })
+
+onShareAppMessage(() => ({
+  title: '栀致饮品订货',
+  path: `/pages/index/index${shareQuery() ? `?${shareQuery()}` : ''}`,
+}))
+
+onShareTimeline(() => ({
+  title: '栀致饮品订货',
+  query: shareQuery(),
+}))
 </script>
 
 <style scoped>

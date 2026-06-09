@@ -8,6 +8,10 @@ type ProductPayload = {
   image?: unknown;
   unit?: unknown;
   description?: unknown;
+  detailDescription?: unknown;
+  detailImages?: unknown;
+  specText?: unknown;
+  storageText?: unknown;
   status?: unknown;
   stock?: unknown;
   minStock?: unknown;
@@ -87,6 +91,10 @@ export class ProductService {
     if (data.image !== undefined) result.image = this.parseNullableString(data.image);
     if (data.unit !== undefined) result.unit = this.parseNullableString(data.unit) || '杯';
     if (data.description !== undefined) result.description = this.parseNullableString(data.description);
+    if (data.detailDescription !== undefined) result.detailDescription = this.parseNullableString(data.detailDescription);
+    if (data.detailImages !== undefined) result.detailImages = this.parseStringArray(data.detailImages);
+    if (data.specText !== undefined) result.specText = this.parseNullableString(data.specText);
+    if (data.storageText !== undefined) result.storageText = this.parseNullableString(data.storageText);
     if (data.status !== undefined) result.status = this.parseStatus(data.status);
     if (data.stock !== undefined) result.stock = this.parseNonNegativeInt(data.stock, '库存不能小于 0');
     if (data.minStock !== undefined) result.minStock = this.parseNonNegativeInt(data.minStock, '最低库存不能小于 0');
@@ -128,5 +136,11 @@ export class ProductService {
   private parseNullableString(value: unknown) {
     if (value === null || value === undefined) return null;
     return String(value).trim() || null;
+  }
+
+  private parseStringArray(value: unknown) {
+    if (value === null || value === undefined || value === '') return [];
+    const list = Array.isArray(value) ? value : [value];
+    return list.map((item) => String(item).trim()).filter(Boolean);
   }
 }

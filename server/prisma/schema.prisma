@@ -109,6 +109,10 @@ model Product {
   image       String?  @db.VarChar(500)
   unit        String?  @default("杯") @db.VarChar(10)
   description String?  @db.Text
+  detailDescription String? @map("detail_description") @db.Text
+  detailImages Json?    @map("detail_images")
+  specText    String?   @map("spec_text") @db.Text
+  storageText String?   @map("storage_text") @db.Text
   status      Int      @default(1) @db.TinyInt
   stock       Int?     @default(0)
   minStock    Int?     @default(10) @map("min_stock")

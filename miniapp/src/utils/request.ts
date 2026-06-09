@@ -13,6 +13,11 @@ function request(options: UniApp.RequestOptions): Promise<any> {
       },
       success: (res: any) => {
         const { data } = res
+        if (!data || typeof data !== 'object') {
+          uni.showToast({ title: '服务响应异常', icon: 'none' })
+          reject(data)
+          return
+        }
         if (data.code === 401) {
           uni.removeStorageSync('token')
           uni.removeStorageSync('user')
