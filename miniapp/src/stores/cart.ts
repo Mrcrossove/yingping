@@ -19,6 +19,8 @@ export const useCartStore = defineStore('cart', () => {
   const totalCount = computed(() =>
     items.value.filter((i) => i.checked).reduce((s, i) => s + i.quantity, 0)
   )
+  const checkedItemCount = computed(() => items.value.filter((i) => i.checked).length)
+  const allChecked = computed(() => items.value.length > 0 && items.value.every((i) => i.checked))
 
   function save() { uni.setStorageSync('cart', items.value) }
 
@@ -38,8 +40,18 @@ export const useCartStore = defineStore('cart', () => {
     if (item) { item.checked = val !== undefined ? val : !item.checked; save() }
   }
 
+  function setAllChecked(checked: boolean) {
+    items.value.forEach((i) => { i.checked = checked })
+    save()
+  }
+
   function removeItem(productId: number) {
     items.value = items.value.filter((i) => i.productId !== productId)
+    save()
+  }
+
+  function removeCheckedItems() {
+    items.value = items.value.filter((i) => !i.checked)
     save()
   }
 
@@ -51,5 +63,20 @@ export const useCartStore = defineStore('cart', () => {
     }))
   }
 
-  return { items, totalPrice, totalCount, addItem, updateQuantity, toggleCheck, removeItem, clear, getCheckedItems, save }
+  return {
+    items,
+    totalPrice,
+    totalCount,
+    checkedItemCount,
+    allChecked,
+    addItem,
+    updateQuantity,
+    toggleCheck,
+    setAllChecked,
+    removeItem,
+    removeCheckedItems,
+    clear,
+    getCheckedItems,
+    save,
+  }
 })
