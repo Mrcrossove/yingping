@@ -689,7 +689,11 @@ export class OrderService {
   private canAccessOrder(order: any, user: { id: number; role: Role }) {
     if (user.role === 'boss' || user.role === 'admin') return true;
     if (user.role === 'merchant') return order.merchantId === user.id;
-    if (user.role === 'salesperson') return order.salespersonId === user.id;
+    if (user.role === 'salesperson') {
+      return order.salespersonId === user.id
+        || order.status === 'pending'
+        || (order.status === 'accepted' && !order.salespersonId);
+    }
     if (user.role === 'maker') return order.makerId === user.id;
     if (user.role === 'delivery') return order.deliveryId === user.id;
     return false;
