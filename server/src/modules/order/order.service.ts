@@ -300,6 +300,7 @@ export class OrderService {
     const order = await this.findOne(orderId);
     if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
     if (order.makerId !== makerId) throw new ForbiddenException('无权操作该制作任务');
+    if (order.flows?.some((flow: any) => flow.action === '开始制作')) return order;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -354,6 +355,7 @@ export class OrderService {
     const order = await this.findOne(orderId);
     if (order.status !== 'made') throw new BadRequestException('订单状态不正确，请等待制作完成');
     if (order.deliveryId !== deliveryId) throw new ForbiddenException('无权操作该配送任务');
+    if (order.flows?.some((flow: any) => flow.action === '开始配送')) return order;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -385,7 +387,6 @@ export class OrderService {
       data: {
         ...this.buildSalespersonAssignment(order, operator),
         deliveryId,
-        status: 'delivering',
         flows: {
           create: {
             fromRole: 'salesperson',

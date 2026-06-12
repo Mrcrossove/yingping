@@ -12,6 +12,7 @@ export const orderApi = {
   makerComplete: (id: number) => request.post(`/orders/${id}/maker-complete`),
   dispatchToDelivery: (id: number, deliveryId: number) =>
     request.post(`/orders/${id}/dispatch-delivery`, { deliveryId }),
+  deliveryStart: (id: number) => request.post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => request.post(`/orders/${id}/delivery-complete`),
   cancel: (id: number) => request.post(`/orders/${id}/cancel`),
   manualCreate: (data: any) => request.post('/orders/manual', data),

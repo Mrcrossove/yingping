@@ -71,7 +71,7 @@
         </el-table-column>
       </el-table>
 
-      <div style="margin-top: 20px; display: flex; gap: 10px;" v-if="canOperate">
+      <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;" v-if="canOperate">
         <template v-if="order.status === 'pending'">
           <el-button type="primary" @click="handleAccept">确认接单</el-button>
         </template>
@@ -98,7 +98,17 @@
           </el-select>
           <el-button type="primary" :disabled="!deliveryId" @click="handleDispatchDelivery">派单给配送员</el-button>
         </template>
-        <el-button v-if="order.status !== 'delivered' && order.status !== 'completed' && order.status !== 'cancelled'" type="danger" @click="handleCancel">取消订单</el-button>
+        <template v-if="canMake && order.status === 'making'">
+          <el-button v-if="!hasStartedMaking" type="primary" @click="handleMakerStart">开始制作</el-button>
+          <el-button type="success" @click="handleMakerComplete">制作完成</el-button>
+        </template>
+        <template v-if="canDeliver && order.status === 'made'">
+          <el-button type="primary" @click="handleDeliveryStart">开始配送</el-button>
+        </template>
+        <template v-if="canDeliver && order.status === 'delivering'">
+          <el-button type="success" @click="handleDeliveryComplete">配送完成</el-button>
+        </template>
+        <el-button v-if="canCancel" type="danger" @click="handleCancel">取消订单</el-button>
       </div>
     </el-card>
   </div>
@@ -134,11 +144,26 @@ function statusTagType(status: string) {
   return map[status] || ''
 }
 
-const canOperate = computed(() =>
-  ['boss', 'admin', 'salesperson'].includes(userStore.role) && order.value?.status !== 'delivered' && order.value?.status !== 'completed' && order.value?.status !== 'cancelled'
-)
 const canDispatch = computed(() =>
   ['boss', 'admin', 'salesperson'].includes(userStore.role) && hasPermission('order:dispatch')
+)
+const canMake = computed(() => userStore.role === 'maker')
+const canDeliver = computed(() => userStore.role === 'delivery')
+const isFinishedOrder = computed(() =>
+  ['delivered', 'completed', 'cancelled'].includes(order.value?.status)
+)
+const canCancel = computed(() =>
+  ['boss', 'admin', 'salesperson'].includes(userStore.role) && !isFinishedOrder.value
+)
+const canOperate = computed(() =>
+  !isFinishedOrder.value && (
+    ['boss', 'admin', 'salesperson'].includes(userStore.role)
+    || (canMake.value && order.value?.status === 'making')
+    || (canDeliver.value && ['made', 'delivering'].includes(order.value?.status))
+  )
+)
+const hasStartedMaking = computed(() =>
+  order.value?.flows?.some((flow: any) => flow.action === '开始制作')
 )
 
 async function fetchOrder() {
@@ -182,6 +207,32 @@ async function handleDispatchDelivery() {
   if (!deliveryId.value) return
   await orderApi.dispatchToDelivery(order.value.id, deliveryId.value)
   ElMessage.success('已派单给配送员')
+  fetchOrder()
+}
+
+async function handleMakerStart() {
+  await orderApi.makerStart(order.value.id)
+  ElMessage.success('已开始制作')
+  fetchOrder()
+}
+
+async function handleMakerComplete() {
+  await ElMessageBox.confirm('确认该订单已经制作完成?', '提示', { type: 'warning' })
+  await orderApi.makerComplete(order.value.id)
+  ElMessage.success('制作完成，已通知业务员派送')
+  fetchOrder()
+}
+
+async function handleDeliveryStart() {
+  await orderApi.deliveryStart(order.value.id)
+  ElMessage.success('已开始配送')
+  fetchOrder()
+}
+
+async function handleDeliveryComplete() {
+  await ElMessageBox.confirm('确认该订单已经配送完成?', '提示', { type: 'warning' })
+  await orderApi.deliveryComplete(order.value.id)
+  ElMessage.success('配送完成')
   fetchOrder()
 }
 
