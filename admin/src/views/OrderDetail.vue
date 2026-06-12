@@ -171,11 +171,11 @@ async function fetchOrder() {
   try {
     order.value = await orderApi.detail(+route.params.id)
     reviews.value = await request.get(`/reviews/order/${route.params.id}`)
-    if (order.value.status === 'accepted') {
+    if (canDispatch.value && order.value.status === 'accepted') {
       makers.value = await userApi.dispatchStaff('maker')
       deliverys.value = await userApi.dispatchStaff('delivery')
     }
-    if (order.value.status === 'made') {
+    if (canDispatch.value && order.value.status === 'made') {
       deliverys.value = await userApi.dispatchStaff('delivery')
     }
   } finally {
