@@ -111,6 +111,7 @@ export class OrderService {
       title: settlementType === 'monthly' ? '有新的月结订单待派单' : '有新的订单待接单',
       content: `订单 ${order.orderNo} 金额 ¥${Number(order.totalAmount).toFixed(2)}`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
 
     return order;
@@ -219,6 +220,7 @@ export class OrderService {
       title: '订单已接单',
       content: `订单 ${order.orderNo} 已由业务员接单`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
     return updated;
   }
@@ -248,6 +250,7 @@ export class OrderService {
       title: '你有新的制作任务',
       content: `订单 ${order.orderNo} 已派单给你制作`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
     return updated;
   }
@@ -290,6 +293,7 @@ export class OrderService {
       title: '你有新的订单任务',
       content: `订单 ${order.orderNo} 已派单，请及时处理`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
 
     return updated;
@@ -346,6 +350,7 @@ export class OrderService {
       title: '订单制作完成',
       content: `订单 ${order.orderNo} 已制作完成`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
     return updated;
   }
@@ -401,6 +406,7 @@ export class OrderService {
       title: '你有新的配送任务',
       content: `订单 ${order.orderNo} 已派单给你配送`,
       type: 'order',
+      targetPath: `/orders/${order.id}`,
     });
     return updated;
   }
@@ -451,6 +457,7 @@ export class OrderService {
         title: '订单已送达',
         content: `订单 ${updated.orderNo} 已配送完成`,
         type: 'order',
+        targetPath: `/orders/${updated.id}`,
       });
     }
 
@@ -674,11 +681,11 @@ export class OrderService {
     return [address.province, address.city, address.district, address.detail].filter(Boolean).join('');
   }
 
-  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string }) {
+  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string; targetPath?: string }) {
     try { await this.notificationService.createForRoles(roles, data); } catch {}
   }
 
-  private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string }) {
+  private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string; targetPath?: string }) {
     try { await this.notificationService.createForUsers(userIds, data); } catch {}
   }
 

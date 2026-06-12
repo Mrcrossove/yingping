@@ -38,6 +38,41 @@
           </div>
         </div>
         <div class="header-right">
+          <el-popover
+            v-model:visible="notificationOpen"
+            placement="bottom-end"
+            width="340"
+            trigger="click"
+            @show="fetchNotifications(false)"
+          >
+            <template #reference>
+              <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
+                <el-button class="notification-button" circle text>
+                  <el-icon :size="20"><Bell /></el-icon>
+                </el-button>
+              </el-badge>
+            </template>
+            <div class="notification-panel">
+              <div class="notification-head">
+                <strong>接单提醒</strong>
+                <el-button v-if="unreadCount > 0" link type="primary" @click="handleMarkAllRead">全部已读</el-button>
+              </div>
+              <div v-if="notifications.length === 0" class="notification-empty">暂无提醒</div>
+              <div v-else class="notification-list">
+                <button
+                  v-for="item in notifications"
+                  :key="item.id"
+                  class="notification-item"
+                  :class="{ unread: !item.read }"
+                  @click="handleNotificationClick(item)"
+                >
+                  <span class="notification-title">{{ item.title }}</span>
+                  <span class="notification-content">{{ item.content || '-' }}</span>
+                  <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
+                </button>
+              </div>
+            </div>
+          </el-popover>
           <span class="user-info">{{ userStore.user?.realName }} <em>{{ roleLabel }}</em></span>
           <el-button class="logout-button" text @click="userStore.logout()">退出</el-button>
         </div>
@@ -80,15 +115,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { canAccessRoute } from '@/utils/access'
+import { notificationApi } from '@/api/index'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const collapsed = ref(false)
 const drawerVisible = ref(false)
+const notificationOpen = ref(false)
+const notifications = ref<any[]>([])
+const unreadCount = ref(0)
+const lastKnownUnreadIds = ref<Set<number>>(new Set())
+let notificationTimer: number | undefined
 
 const roleMap: Record<string, string> = {
   boss: '老板', admin: '管理员', salesperson: '业务员',
@@ -103,6 +146,60 @@ const menuItems = computed(() => {
   return all
     .filter((r) => canAccessRoute(r.name, userStore.role))
     .map((r) => ({ path: `/${r.path}`, title: r.meta?.title as string, icon: r.meta?.icon as string }))
+})
+
+async function fetchNotifications(shouldToast = true) {
+  try {
+    const data = await notificationApi.list({ page: 1, pageSize: 8 })
+    const list = data.list || []
+    const unreadIds = new Set<number>(list.filter((item: any) => !item.read).map((item: any) => item.id))
+    const newItems = list.filter((item: any) => !item.read && !lastKnownUnreadIds.value.has(item.id))
+    notifications.value = list
+    unreadCount.value = data.unreadCount || 0
+    if (shouldToast && lastKnownUnreadIds.value.size > 0 && newItems.length > 0) {
+      const first = newItems[0]
+      ElMessage({
+        type: 'success',
+        message: `${first.title}${first.content ? `：${first.content}` : ''}`,
+        duration: 5000,
+      })
+    }
+    lastKnownUnreadIds.value = unreadIds
+  } catch {
+    // The global request interceptor handles auth and visible errors.
+  }
+}
+
+async function handleNotificationClick(item: any) {
+  if (!item.read) {
+    await notificationApi.markRead(item.id)
+    item.read = true
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    lastKnownUnreadIds.value.delete(item.id)
+  }
+  notificationOpen.value = false
+  if (item.targetPath) router.push(item.targetPath)
+}
+
+async function handleMarkAllRead() {
+  await notificationApi.markAllRead()
+  notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
+  unreadCount.value = 0
+  lastKnownUnreadIds.value = new Set()
+}
+
+function formatNotificationTime(value: string) {
+  if (!value) return ''
+  return new Date(value).toLocaleString()
+}
+
+onMounted(() => {
+  fetchNotifications(false)
+  notificationTimer = window.setInterval(() => fetchNotifications(true), 10000)
+})
+
+onBeforeUnmount(() => {
+  if (notificationTimer) window.clearInterval(notificationTimer)
 })
 
 </script>
@@ -181,6 +278,62 @@ const menuItems = computed(() => {
 }
 .header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .header-right { display: flex; align-items: center; gap: 12px; }
+.notification-badge { display: inline-flex; }
+.notification-button {
+  color: #2d6e49;
+  background: #eef6ef;
+}
+.notification-button:hover {
+  color: #1f5f3c;
+  background: #e0f0e4;
+}
+.notification-panel { max-height: 420px; overflow: hidden; }
+.notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf1ec;
+}
+.notification-head strong { color: #20362a; font-size: 15px; }
+.notification-empty {
+  padding: 28px 0;
+  text-align: center;
+  color: #8b95a5;
+}
+.notification-list {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-top: 6px;
+}
+.notification-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 0;
+  border-bottom: 1px solid #edf1ec;
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+}
+.notification-item:hover { background: #f5faf4; }
+.notification-item.unread { background: #f0f7ef; }
+.notification-title {
+  color: #20362a;
+  font-weight: 800;
+  font-size: 14px;
+}
+.notification-content {
+  color: #526357;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.notification-time {
+  color: #9aa5a0;
+  font-size: 12px;
+}
 .page-title {
   display: flex;
   flex-direction: column;
@@ -284,6 +437,7 @@ const menuItems = computed(() => {
   .mobile-toggle { display: inline-flex; }
   .header { height: 52px; padding: 0 10px; }
   .header-right { gap: 6px; flex-shrink: 0; }
+  .notification-button { width: 32px; height: 32px; }
   .page-title span { font-size: 15px; }
   .page-title small { display: none; }
   .user-info { max-width: 120px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }

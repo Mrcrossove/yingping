@@ -14,9 +14,15 @@ export class NotificationController {
     return ApiResult.success(data);
   }
 
+  @Post('read-all')
+  async markAllRead(@Request() req) {
+    const data = await this.notificationService.markAllRead(req.user.id);
+    return ApiResult.success(data);
+  }
+
   @Post(':id/read')
-  async markRead(@Param('id') id: string) {
-    const data = await this.notificationService.markRead(+id);
+  async markRead(@Param('id') id: string, @Request() req) {
+    const data = await this.notificationService.markRead(+id, req.user.id);
     return ApiResult.success(data);
   }
 }

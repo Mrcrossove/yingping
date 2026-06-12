@@ -4,10 +4,14 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { PaymentStatus, Role } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class PaymentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   async createPayment(orderId: number, user: { id: number; role: Role }) {
     const order = await this.prisma.order.findUnique({
@@ -104,10 +108,10 @@ export class PaymentService {
     const transactionId = data.transaction_id;
     if (!orderNo || !transactionId) throw new BadRequestException('支付回调订单参数缺失');
 
-    await this.prisma.$transaction(async (tx) => {
+    const notifyOrder = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findFirst({ where: { orderNo }, include: { order: true } });
       if (!payment) throw new BadRequestException('支付记录不存在');
-      if (payment.status === 'paid') return;
+      if (payment.status === 'paid') return null;
       if (payment.status !== 'pending') throw new BadRequestException('支付状态不允许更新');
 
       await tx.payment.update({
@@ -135,7 +139,21 @@ export class PaymentService {
             : {}),
         },
       });
+
+      return tx.order.findUnique({
+        where: { id: payment.orderId },
+        select: { id: true, orderNo: true, totalAmount: true },
+      });
     });
+
+    if (notifyOrder) {
+      await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
+        title: '订单已支付待派单',
+        content: `订单 ${notifyOrder.orderNo} 金额 ¥${Number(notifyOrder.totalAmount).toFixed(2)}`,
+        type: 'order',
+        targetPath: `/orders/${notifyOrder.id}`,
+      });
+    }
 
     return { code: 'SUCCESS', message: '成功' };
   }
@@ -282,6 +300,10 @@ export class PaymentService {
     if (user.role === 'merchant' && order.merchantId === user.id) return;
     if (user.role === 'salesperson' && order.salespersonId === user.id) return;
     throw new ForbiddenException('无权访问该支付订单');
+  }
+
+  private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string; targetPath?: string }) {
+    try { await this.notificationService.createForRoles(roles, data); } catch {}
   }
 
   private getWxPayConfig() {

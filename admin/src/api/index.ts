@@ -60,6 +60,12 @@ export const dashboardApi = {
   lowStock: () => request.get('/dashboard/low-stock'),
 }
 
+export const notificationApi = {
+  list: (params?: any) => request.get('/notifications', { params }),
+  markRead: (id: number) => request.post(`/notifications/${id}/read`),
+  markAllRead: () => request.post('/notifications/read-all'),
+}
+
 import { API_BASE_URL } from '@/config'
 
 export const exportApi = {
