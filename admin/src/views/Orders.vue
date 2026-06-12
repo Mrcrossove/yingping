@@ -276,8 +276,8 @@ function onSelectionChange(val: any[]) { selectedOrders.value = val }
 
 async function showBatchDialog() {
   if (!canDispatch.value) return
-  const batches = await Promise.all([userApi.list({ role: 'maker', pageSize: 100 }), userApi.list({ role: 'delivery', pageSize: 100 })])
-  makers.value = batches[0].list; deliverys.value = batches[1].list
+  const batches = await Promise.all([userApi.dispatchStaff('maker'), userApi.dispatchStaff('delivery')])
+  makers.value = batches[0]; deliverys.value = batches[1]
   batchVisible.value = true
 }
 

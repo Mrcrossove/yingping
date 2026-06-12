@@ -147,11 +147,11 @@ async function fetchOrder() {
     order.value = await orderApi.detail(+route.params.id)
     reviews.value = await request.get(`/reviews/order/${route.params.id}`)
     if (order.value.status === 'accepted') {
-      makers.value = (await userApi.list({ role: 'maker', pageSize: 100 })).list
-      deliverys.value = (await userApi.list({ role: 'delivery', pageSize: 100 })).list
+      makers.value = await userApi.dispatchStaff('maker')
+      deliverys.value = await userApi.dispatchStaff('delivery')
     }
     if (order.value.status === 'made') {
-      deliverys.value = (await userApi.list({ role: 'delivery', pageSize: 100 })).list
+      deliverys.value = await userApi.dispatchStaff('delivery')
     }
   } finally {
     loading.value = false
