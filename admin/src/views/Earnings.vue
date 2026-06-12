@@ -85,7 +85,8 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { earningApi, exportApi, userApi } from '@/api/index'
+import { ElMessage } from 'element-plus'
+import { earningApi, downloadApi, userApi } from '@/api/index'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -155,14 +156,12 @@ async function fetchList() {
   }
 }
 
-function handleExport() {
+async function handleExport() {
   const params = buildParams()
   delete params.page
   delete params.pageSize
-  const a = document.createElement('a')
-  a.href = exportApi.earnings(params)
-  a.setAttribute('download', '')
-  a.click()
+  await downloadApi.earnings(params)
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

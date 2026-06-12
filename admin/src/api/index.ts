@@ -68,6 +68,27 @@ export const exportApi = {
   withdrawals: () => `${API_BASE_URL}/api/export/withdrawals`,
 }
 
+async function downloadExcel(url: string, filename: string, params?: any) {
+  const blob = await request.get<Blob>(url, {
+    params,
+    responseType: 'blob',
+  })
+  const objectUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = objectUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(objectUrl)
+}
+
+export const downloadApi = {
+  orders: (params?: any) => downloadExcel('/export/orders', 'orders.xlsx', params),
+  earnings: (params?: any) => downloadExcel('/export/earnings', 'earnings.xlsx', params),
+  withdrawals: () => downloadExcel('/export/withdrawals', 'withdrawals.xlsx'),
+}
+
 export const fileApi = {
   upload: async (file: File) => {
     const uploadFile = await compressImageFile(file)

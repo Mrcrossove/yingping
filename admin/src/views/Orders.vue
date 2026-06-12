@@ -135,7 +135,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { orderApi, exportApi, userApi } from '@/api/index'
+import { orderApi, downloadApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -256,14 +256,11 @@ async function handleStaffRoleChange() {
   }
 }
 
-function handleExport() {
+async function handleExport() {
   if (!canExport.value) return
   const params = buildQueryParams()
-  const url = exportApi.orders(params)
-  const a = document.createElement('a')
-  a.href = url
-  a.setAttribute('download', '')
-  a.click()
+  await downloadApi.orders(params)
+  ElMessage.success('导出成功')
 }
 
 const selectedOrders = ref<any[]>([])

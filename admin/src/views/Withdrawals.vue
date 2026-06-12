@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { withdrawalApi, exportApi } from '@/api/index'
+import { withdrawalApi, downloadApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -120,7 +120,10 @@ async function handleBatchApprove() {
   fetchList()
 }
 
-function handleExport() { window.open(exportApi.withdrawals(), '_blank') }
+async function handleExport() {
+  await downloadApi.withdrawals()
+  ElMessage.success('导出成功')
+}
 
 onMounted(fetchList)
 </script>
