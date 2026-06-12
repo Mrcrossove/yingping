@@ -5,13 +5,13 @@ export const ROLE_HOME: Record<string, string> = {
   maker: '/orders',
   delivery: '/orders',
   promoter: '/promotion',
-  merchant: '/orders',
+  merchant: '/403',
 }
 
 export const ROUTE_ROLES: Record<string, string[]> = {
   Dashboard: ['boss', 'admin'],
-  Orders: ['boss', 'admin', 'salesperson', 'maker', 'delivery', 'merchant'],
-  OrderDetail: ['boss', 'admin', 'salesperson', 'maker', 'delivery', 'merchant'],
+  Orders: ['boss', 'admin', 'salesperson', 'maker', 'delivery'],
+  OrderDetail: ['boss', 'admin', 'salesperson', 'maker', 'delivery'],
   Products: ['boss', 'admin'],
   Banners: ['boss', 'admin'],
   Users: ['boss', 'admin'],
@@ -104,4 +104,11 @@ export function canAccessRoute(routeName: unknown, role: string) {
     return !permission || permissions.includes(permission)
   }
   return true
+}
+
+export function hasPermission(permission: string) {
+  const role = getUserRole()
+  if (role === 'boss') return true
+  if (role !== 'admin') return true
+  return getUserPermissions().includes(permission)
 }

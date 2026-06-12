@@ -47,7 +47,7 @@ export class OrderController {
   @Roles('salesperson', 'admin', 'boss')
   @RequirePermission('order:dispatch')
   async dispatchToMaker(@Param('id') id: string, @Body('makerId') makerId: number, @Request() req) {
-    const data = await this.orderService.dispatchToMaker(+id, makerId, req.user.id);
+    const data = await this.orderService.dispatchToMaker(+id, makerId, req.user);
     return ApiResult.success(data, '派单成功');
   }
 
@@ -56,7 +56,7 @@ export class OrderController {
   @Roles('salesperson', 'admin', 'boss')
   @RequirePermission('order:dispatch')
   async dispatchBoth(@Param('id') id: string, @Body('makerId') makerId: number, @Body('deliveryId') deliveryId: number, @Request() req) {
-    const data = await this.orderService.dispatchBoth(+id, makerId, deliveryId, req.user.id);
+    const data = await this.orderService.dispatchBoth(+id, makerId, deliveryId, req.user);
     return ApiResult.success(data, '派单成功');
   }
 
@@ -78,7 +78,7 @@ export class OrderController {
   @Roles('salesperson', 'admin', 'boss')
   @RequirePermission('order:dispatch')
   async dispatchToDelivery(@Param('id') id: string, @Body('deliveryId') deliveryId: number, @Request() req) {
-    const data = await this.orderService.dispatchToDelivery(+id, deliveryId, req.user.id);
+    const data = await this.orderService.dispatchToDelivery(+id, deliveryId, req.user);
     return ApiResult.success(data, '派单成功');
   }
 
@@ -115,7 +115,7 @@ export class OrderController {
   @Roles('salesperson', 'admin', 'boss')
   @RequirePermission('order:dispatch')
   async batchDispatch(@Body() body: { orderIds: number[]; makerId: number; deliveryId: number }, @Request() req) {
-    const data = await this.orderService.batchDispatch(body.orderIds, body.makerId, body.deliveryId, req.user.id);
+    const data = await this.orderService.batchDispatch(body.orderIds, body.makerId, body.deliveryId, req.user);
     return ApiResult.success(data, '批量派单完成');
   }
 }

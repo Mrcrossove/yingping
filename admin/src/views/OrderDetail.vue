@@ -75,7 +75,7 @@
         <template v-if="order.status === 'pending'">
           <el-button type="primary" @click="handleAccept">确认接单</el-button>
         </template>
-        <template v-if="order.status === 'accepted'">
+        <template v-if="order.status === 'accepted' && canDispatch">
           <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <el-select v-model="makerId" placeholder="选择制作员" style="width: 160px;">
@@ -92,7 +92,7 @@
             </div>
           </div>
         </template>
-        <template v-if="order.status === 'made'">
+        <template v-if="order.status === 'made' && canDispatch">
           <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
             <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
           </el-select>
@@ -111,6 +111,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { orderApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
+import { hasPermission } from '@/utils/access'
 
 const route = useRoute()
 const router = useRouter()
@@ -135,6 +136,9 @@ function statusTagType(status: string) {
 
 const canOperate = computed(() =>
   ['boss', 'admin', 'salesperson'].includes(userStore.role) && order.value?.status !== 'delivered' && order.value?.status !== 'completed' && order.value?.status !== 'cancelled'
+)
+const canDispatch = computed(() =>
+  ['boss', 'admin', 'salesperson'].includes(userStore.role) && hasPermission('order:dispatch')
 )
 
 async function fetchOrder() {

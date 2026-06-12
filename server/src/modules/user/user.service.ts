@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { NotificationService } from '../notification/notification.service';
 
 const EMPLOYEE_ROLES = ['boss', 'admin', 'salesperson', 'maker', 'delivery', 'promoter'];
+const CREATABLE_EMPLOYEE_ROLES = ['admin', 'salesperson', 'maker', 'delivery', 'promoter'];
 
 @Injectable()
 export class UserService {
@@ -273,6 +274,7 @@ export class UserService {
   async create(data: { username: string; password: string; realName: string; role: string; phone?: string }, operator: any) {
     const exists = await this.prisma.user.findUnique({ where: { username: data.username } });
     if (exists) throw new ForbiddenException('账号已存在');
+    if (!CREATABLE_EMPLOYEE_ROLES.includes(data.role)) throw new BadRequestException('员工角色不正确');
 
     const hashed = await bcrypt.hash(data.password, 10);
     return this.prisma.user.create({
@@ -295,7 +297,10 @@ export class UserService {
     if (data.realName !== undefined) updateData.realName = data.realName;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.status !== undefined) updateData.status = data.status;
-    if (data.role !== undefined) updateData.role = data.role;
+    if (data.role !== undefined) {
+      if (!CREATABLE_EMPLOYEE_ROLES.includes(data.role)) throw new BadRequestException('员工角色不正确');
+      updateData.role = data.role;
+    }
     if (data.password) updateData.password = await bcrypt.hash(data.password, 10);
 
     return this.prisma.user.update({

@@ -137,6 +137,7 @@ import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { orderApi, downloadApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
+import { hasPermission } from '@/utils/access'
 
 const userStore = useUserStore()
 const loading = ref(false)
@@ -154,8 +155,8 @@ const staffId = ref<number | null>(null)
 const staffOptions = ref<any[]>([])
 const staffLoading = ref(false)
 const role = computed(() => userStore.role)
-const canDispatch = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
-const canExport = computed(() => ['boss', 'admin'].includes(role.value))
+const canDispatch = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value) && hasPermission('order:dispatch'))
+const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('export:manage'))
 const showStaffColumns = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
 
 const statusMap: Record<string, string> = {

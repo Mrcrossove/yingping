@@ -223,13 +223,15 @@ export class OrderService {
     return updated;
   }
 
-  async dispatchToMaker(orderId: number, makerId: number, operatorId: number) {
+  async dispatchToMaker(orderId: number, makerId: number, operator: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
     if (order.status !== 'accepted') throw new BadRequestException('订单状态不正确，当前只能从已接单状态派单给制作员');
+    const operatorId = operator.id;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
+        ...this.buildSalespersonAssignment(order, operator),
         makerId,
         status: 'making',
         flows: {
@@ -251,13 +253,15 @@ export class OrderService {
   }
 
 
-  async dispatchBoth(orderId: number, makerId: number, deliveryId: number, operatorId: number) {
+  async dispatchBoth(orderId: number, makerId: number, deliveryId: number, operator: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
     if (order.status !== 'accepted') throw new BadRequestException('订单状态不正确');
+    const operatorId = operator.id;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
+        ...this.buildSalespersonAssignment(order, operator),
         makerId,
         deliveryId,
         status: 'making',
@@ -371,13 +375,15 @@ export class OrderService {
     return updated;
   }
 
-  async dispatchToDelivery(orderId: number, deliveryId: number, operatorId: number) {
+  async dispatchToDelivery(orderId: number, deliveryId: number, operator: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
     if (order.status !== 'made') throw new BadRequestException('订单状态不正确，需制作完成后才能派单给配送员');
+    const operatorId = operator.id;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
+        ...this.buildSalespersonAssignment(order, operator),
         deliveryId,
         status: 'delivering',
         flows: {
@@ -535,11 +541,11 @@ export class OrderService {
     return this.findOne(order.id);
   }
 
-  async batchDispatch(orderIds: number[], makerId: number, deliveryId: number, operatorId: number) {
+  async batchDispatch(orderIds: number[], makerId: number, deliveryId: number, operator: { id: number; role: Role }) {
     const results: { id: number; success: boolean; message?: string }[] = [];
     for (const id of orderIds) {
       try {
-        const result = await this.dispatchBoth(id, makerId, deliveryId, operatorId);
+        const result = await this.dispatchBoth(id, makerId, deliveryId, operator);
         results.push({ id, success: true });
       } catch (e: any) {
         results.push({ id, success: false, message: e.message });
@@ -673,6 +679,11 @@ export class OrderService {
 
   private async safeNotifyUsers(userIds: number[], data: { title: string; content?: string; type?: string }) {
     try { await this.notificationService.createForUsers(userIds, data); } catch {}
+  }
+
+  private buildSalespersonAssignment(order: any, operator: { id: number; role: Role }) {
+    if (order.salespersonId || operator.role !== 'salesperson') return {};
+    return { salespersonId: operator.id };
   }
 
   private canAccessOrder(order: any, user: { id: number; role: Role }) {

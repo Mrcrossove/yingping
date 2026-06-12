@@ -82,7 +82,7 @@
             <template v-if="role === 'merchant'">
               <view v-if="canCancel(order)" class="btn outline danger" @click="handleAction(order, 'cancel')">取消订单</view>
               <view v-if="canRefund(order)" class="btn danger" @click="handleAction(order, 'refund')">申请退款</view>
-              <view v-if="order.status === 'delivered'" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
+              <view v-if="isCompletedOrder(order)" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
               <view v-if="order.status === 'pending'" class="btn outline" @click="callSalesperson(order)">联系业务员</view>
             </template>
           </view>
@@ -148,11 +148,12 @@ const stats = computed(() => {
     { label: '待接单', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
     { label: '制作中', count: counts.making || 0, color: '#67C23A', status: 'making' },
     { label: '待配送', count: counts.delivering || 0, color: '#2f8a5a', status: 'delivering' },
-    { label: '已完成', count: counts.delivered || 0, color: '#909399', status: 'delivered' },
+    { label: '已完成', count: (counts.delivered || 0) + (counts.completed || 0), color: '#909399', status: 'completed' },
   ]
 })
 
 const filteredOrders = computed(() => {
+  if (filterStatus.value === 'completed') return orders.value.filter(o => ['delivered', 'completed'].includes(o.status))
   if (filterStatus.value) return orders.value.filter(o => o.status === filterStatus.value)
   return orders.value
 })
@@ -201,6 +202,10 @@ function canCancel(order: any) {
 function canRefund(order: any) {
   if (order.settlementType === 'monthly') return false
   return order.status === 'pending' && order.paymentStatus === 'paid'
+}
+
+function isCompletedOrder(order: any) {
+  return ['delivered', 'completed'].includes(order.status)
 }
 
 async function fetchPublicSettings() {
