@@ -27,13 +27,18 @@
           value-format="YYYY-MM-DD"
           class="filter-item date-range"
         />
-        <el-select v-model="staffRole" placeholder="人员类型" clearable class="filter-item staff-role" @change="handleStaffRoleChange">
-          <el-option label="商户" value="merchant" />
-          <el-option label="业务员" value="salesperson" />
-          <el-option label="制作员" value="maker" />
-          <el-option label="配送员" value="delivery" />
+        <el-select
+          v-if="canFilterStaff"
+          v-model="staffRole"
+          placeholder="人员类型"
+          clearable
+          class="filter-item staff-role"
+          @change="handleStaffRoleChange"
+        >
+          <el-option v-for="item in staffRoleOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
         <el-select
+          v-if="canFilterStaff"
           v-model="staffId"
           placeholder="选择人员"
           clearable
@@ -158,6 +163,19 @@ const role = computed(() => userStore.role)
 const canDispatch = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value) && hasPermission('order:dispatch'))
 const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('export:manage'))
 const showStaffColumns = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
+const canFilterStaff = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
+const staffRoleOptions = computed(() => {
+  if (['boss', 'admin'].includes(role.value)) {
+    return [
+      { label: '商户', value: 'merchant' },
+      { label: '业务员', value: 'salesperson' },
+      { label: '制作员', value: 'maker' },
+      { label: '配送员', value: 'delivery' },
+    ]
+  }
+  if (role.value === 'salesperson') return [{ label: '商户', value: 'merchant' }]
+  return []
+})
 
 const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
@@ -202,7 +220,7 @@ function buildQueryParams() {
   if (settlementStatus.value) params.settlementStatus = settlementStatus.value
   if (dateRange.value?.[0]) params.startDate = dateRange.value[0]
   if (dateRange.value?.[1]) params.endDate = dateRange.value[1]
-  if (staffRole.value && staffId.value) {
+  if (canFilterStaff.value && staffRole.value && staffId.value) {
     const keyMap: Record<string, string> = {
       merchant: 'merchantId',
       salesperson: 'salespersonId',
@@ -248,10 +266,19 @@ async function handleStaffRoleChange() {
   staffId.value = null
   staffOptions.value = []
   if (!staffRole.value) return
+  if (!staffRoleOptions.value.some((item) => item.value === staffRole.value)) {
+    staffRole.value = ''
+    return
+  }
   staffLoading.value = true
   try {
-    const data = await userApi.list({ role: staffRole.value, pageSize: 500 })
-    staffOptions.value = data.list || []
+    if (staffRole.value === 'merchant') {
+      const data = await userApi.merchants({ pageSize: 500 })
+      staffOptions.value = data.list || []
+    } else {
+      const data = await userApi.list({ role: staffRole.value, pageSize: 500 })
+      staffOptions.value = data.list || []
+    }
   } finally {
     staffLoading.value = false
   }
