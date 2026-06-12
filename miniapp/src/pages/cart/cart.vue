@@ -3,7 +3,7 @@
     <block v-if="items.length > 0">
       <view v-for="item in items" :key="item.productId" class="cart-item">
         <view class="checkbox" @click="cartStore.toggleCheck(item.productId)">
-          <text :style="{ color: item.checked ? '#409EFF' : '#ccc', fontSize: '22px' }">{{ item.checked ? '✓' : '○' }}</text>
+          <text :style="{ color: item.checked ? '#2f8a5a' : '#ccc', fontSize: '22px' }">{{ item.checked ? '✓' : '○' }}</text>
         </view>
         <image :src="item.image || '/static/tab/home.png'" class="cart-img" mode="aspectFill" />
         <view class="cart-info">
@@ -43,8 +43,11 @@
           <text class="total-price">¥{{ cartStore.totalPrice.toFixed(2) }}</text>
         </view>
         <button class="delete-btn" :disabled="cartStore.checkedItemCount === 0" @click="handleRemoveChecked">删除选中</button>
-        <button class="submit-btn" :disabled="cartStore.totalCount === 0" @click="handleSubmit">
-          下单({{ cartStore.totalCount }})
+        <button class="monthly-btn" :loading="submittingType === 'monthly'" :disabled="cartStore.totalCount === 0 || !!submittingType" @click="handleSubmit('monthly')">
+          月结下单
+        </button>
+        <button class="submit-btn" :loading="submittingType === 'wechat'" :disabled="cartStore.totalCount === 0 || !!submittingType" @click="handleSubmit('wechat')">
+          微信支付
         </button>
       </view>
     </block>
@@ -61,7 +64,8 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
-import { addressApi, orderApi } from '@/api/index'
+import { addressApi, orderApi, userApi } from '@/api/index'
+import { isPaymentCanceled, requestOrderPayment } from '@/utils/payment'
 
 const cartStore = useCartStore()
 const userStore = useUserStore()
@@ -69,6 +73,8 @@ const items = computed(() => cartStore.items)
 const addresses = ref<any[]>([])
 const selectedAddress = ref<any>(null)
 const note = ref('')
+const submittingType = ref<'wechat' | 'monthly' | ''>('')
+const merchantProfile = ref<any>(null)
 
 async function fetchAddresses() {
   if (!userStore.isLoggedIn) return
@@ -78,6 +84,16 @@ async function fetchAddresses() {
   } catch {
     addresses.value = []
     selectedAddress.value = null
+  }
+}
+
+async function fetchMerchantProfile() {
+  if (!userStore.isLoggedIn) return
+  try {
+    const data = await userApi.myMerchantProfile()
+    merchantProfile.value = data
+  } catch {
+    merchantProfile.value = null
   }
 }
 
@@ -125,7 +141,25 @@ function handleRemoveChecked() {
   })
 }
 
-async function handleSubmit() {
+function isMerchantProfileReady() {
+  const user = merchantProfile.value
+  const profile = user?.merchantProfile || {}
+  return !!(profile.shopName && profile.contactName && profile.contactPhone)
+}
+
+function promptCompleteMerchantProfile() {
+  uni.showModal({
+    title: '完善商户信息',
+    content: '下单前请先填写商户名称、联系人和联系电话，方便后台识别和配送对账。',
+    confirmText: '去完善',
+    success: (res: any) => {
+      if (res.confirm) uni.navigateTo({ url: '/pages/merchant-profile/merchant-profile' })
+    },
+  })
+}
+
+async function handleSubmit(type: 'wechat' | 'monthly') {
+  if (submittingType.value) return
   if (!userStore.isLoggedIn) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     return
@@ -139,24 +173,55 @@ async function handleSubmit() {
     uni.showToast({ title: '请先选择收货地址', icon: 'none' })
     return
   }
+  if (!merchantProfile.value) await fetchMerchantProfile()
+  if (!isMerchantProfileReady()) {
+    promptCompleteMerchantProfile()
+    return
+  }
+  submittingType.value = type
   try {
-    await orderApi.create({
+    const order = await orderApi.create({
       items: checkedItems,
       addressId: selectedAddress.value.id,
       note: note.value,
+      settlementType: type,
     })
-    uni.showToast({ title: '下单成功', icon: 'success' })
-    cartStore.clear()
+    if (!order?.id) throw new Error('订单创建成功但缺少订单ID')
+
+    cartStore.removeCheckedItems()
     note.value = ''
-    setTimeout(() => uni.navigateTo({ url: '/pages/orders/orders' }), 1000)
-  } catch { }
+
+    if (type === 'wechat') {
+      try {
+        await requestOrderPayment(order.id, userStore.user?.openid)
+        uni.showToast({ title: '支付成功', icon: 'success' })
+      } catch (paymentError: any) {
+        if (isPaymentCanceled(paymentError)) {
+          uni.showToast({ title: '订单已生成，可稍后支付', icon: 'none' })
+        } else {
+          uni.showToast({ title: paymentError?.message || '订单已生成，支付失败可稍后重试', icon: 'none' })
+        }
+      }
+    } else {
+      uni.showToast({ title: '月结订单已提交', icon: 'success' })
+    }
+
+    setTimeout(() => uni.navigateTo({ url: `/pages/order-detail/order-detail?id=${order.id}` }), 800)
+  } catch (error: any) {
+    uni.showToast({ title: error?.message || '下单失败，请稍后重试', icon: 'none' })
+  } finally {
+    submittingType.value = ''
+  }
 }
 
-onShow(fetchAddresses)
+onShow(() => {
+  fetchAddresses()
+  fetchMerchantProfile()
+})
 </script>
 
 <style scoped>
-.container { min-height: 100vh; padding: 10px 12px 120rpx; box-sizing: border-box; background: #eef2f6; }
+.container { min-height: 100vh; padding: 10px 12px 120rpx; box-sizing: border-box; background: #f4f7f2; }
 .cart-item { display: flex; align-items: center; padding: 12px; background: #fff; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 0 0 1px #e8edf4 inset; }
 .checkbox { margin-right: 10px; }
 .cart-img { width: 88rpx; height: 88rpx; border-radius: 10px; background: #f5f7fa; margin-right: 10px; }
@@ -178,15 +243,17 @@ onShow(fetchAddresses)
 .cart-footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; gap: 6px; padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.96); border-top: 1px solid #e6ebf2; box-shadow: 0 -10px 24px rgba(15,23,42,0.06); box-sizing: border-box; }
 .footer-check { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .check-icon { color: #c8d0dc; font-size: 20px; line-height: 20px; }
-.check-icon.checked { color: #2563eb; }
+.check-icon.checked { color: #2f8a5a; }
 .check-text { font-size: 12px; color: #4b5563; white-space: nowrap; }
 .footer-total { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 2px; overflow: hidden; }
 .total-label { color: #4b5563; font-size: 12px; white-space: nowrap; }
 .total-price { color: #dc2626; font-size: 18px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .delete-btn { background: #fff; color: #dc2626; border: 1px solid #fecaca; border-radius: 12px; padding: 9px 8px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-.submit-btn { background: #2563eb; color: #fff; border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.monthly-btn { background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; border-radius: 12px; padding: 10px 10px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.submit-btn { background: #2f8a5a; color: #fff; border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
 .delete-btn[disabled],
+.monthly-btn[disabled],
 .submit-btn[disabled] { opacity: 0.5; }
 .empty { text-align: center; margin: 90px 12px 0; padding: 54px 20px; color: #7b8494; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #e8edf4 inset; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.go-shop-btn { background: #2563eb; color: #fff; border: none; border-radius: 12px; padding: 10px 30px; font-size: 14px; font-weight: 700; }
+.go-shop-btn { background: #2f8a5a; color: #fff; border: none; border-radius: 12px; padding: 10px 30px; font-size: 14px; font-weight: 700; }
 </style>

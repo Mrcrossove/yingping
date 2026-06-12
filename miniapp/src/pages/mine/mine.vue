@@ -69,6 +69,7 @@ const menuGroups = computed(() => {
       title: '账户服务',
       items: [
         { key: 'orders', icon: '📋', label: '我的订单' },
+        { key: 'merchantProfile', icon: '🏪', label: '商户信息' },
         { key: 'phone', icon: '📱', label: '手机号' },
         { key: 'address', icon: '📍', label: '收货地址' },
         { key: 'notifications', icon: '🔔', label: '消息通知' },
@@ -97,6 +98,7 @@ function handleMenu(item: { key: string }) {
   }
   const routeMap: Record<string, string> = {
     orders: '/pages/orders/orders',
+    merchantProfile: '/pages/merchant-profile/merchant-profile',
     notifications: '/pages/notifications/notifications',
     address: '/pages/address/address',
   }
@@ -131,12 +133,12 @@ onShow(() => {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f6f8; }
-.login-panel { text-align: center; padding: 54px 30px 34px; background: linear-gradient(180deg, #1a73e8, #f5f6f8 82%); }
+.page { min-height: 100vh; background: #f4f7f2; }
+.login-panel { text-align: center; padding: 54px 30px 34px; background: linear-gradient(180deg, #2f8a5a, #f4f7f2 82%); }
 .login-title { font-size: 22px; font-weight: 700; color: #fff; display: block; margin-bottom: 8px; }
 .login-desc { font-size: 14px; color: rgba(255,255,255,0.78); display: block; margin-bottom: 28px; }
 .wx-login-btn { background: #07c160; color: #fff; border: none; border-radius: 24px; padding: 14px 48px; font-size: 16px; font-weight: 600; width: 280px; margin: 0 auto; }
-.user-card { background: linear-gradient(135deg, #1a73e8, #1557b0); padding: 24px 20px 20px; color: #fff; }
+.user-card { background: linear-gradient(135deg, #1f3527, #2f8a5a 65%, #d89a42); padding: 24px 20px 20px; color: #fff; }
 .uc-top { display: flex; align-items: center; }
 .avatar { width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; margin-right: 14px; }
 .uc-info { flex: 1; }
@@ -160,5 +162,5 @@ onShow(() => {
 .phone-input { border: 1px solid #eee; border-radius: 8px; padding: 12px; font-size: 14px; margin-bottom: 16px; }
 .phone-actions { display: flex; gap: 12px; }
 .phone-cancel { flex: 1; background: #f5f5f5; color: #666; border: none; border-radius: 8px; padding: 12px; }
-.phone-save { flex: 1; background: #1a73e8; color: #fff; border: none; border-radius: 8px; padding: 12px; }
+.phone-save { flex: 1; background: #2f8a5a; color: #fff; border: none; border-radius: 8px; padding: 12px; }
 </style>

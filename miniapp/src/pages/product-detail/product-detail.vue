@@ -6,6 +6,9 @@
           v-if="galleryImages.length"
           class="hero-swiper"
           circular
+          autoplay
+          :interval="3000"
+          :duration="500"
           indicator-dots
           indicator-color="rgba(255,255,255,0.55)"
           indicator-active-color="#ffffff"
@@ -174,13 +177,13 @@ onShareTimeline(() => ({
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #eef2f6; }
+.page { min-height: 100vh; background: #f4f7f2; }
 .content { height: 100vh; box-sizing: border-box; }
-.hero { height: 320px; background: #dfe5ee; display: flex; align-items: center; justify-content: center; }
+.hero { height: 300px; background: #e7f2e9; display: flex; align-items: center; justify-content: center; }
 .hero-swiper { width: 100%; height: 100%; }
 .hero-image { width: 100%; height: 100%; display: block; }
-.hero-placeholder { width: 88px; height: 88px; border-radius: 18px; background: #e8f0fe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; }
-.summary { margin: -18px 12px 12px; padding: 16px; background: #fff; border-radius: 12px; position: relative; box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
+.hero-placeholder { width: 88px; height: 88px; border-radius: 18px; background: #fff8ec; color: #2f8a5a; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; }
+.summary { margin: 14px 12px 12px; padding: 16px; background: #fff; border-radius: 12px; position: relative; box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
 .title-row { display: flex; align-items: flex-start; gap: 10px; }
 .name { flex: 1; font-size: 20px; line-height: 27px; font-weight: 800; color: #172033; }
 .status { flex-shrink: 0; font-size: 11px; color: #0f8a3c; background: #e8f7ee; border-radius: 999px; padding: 4px 8px; }
@@ -200,5 +203,5 @@ onShareTimeline(() => ({
 .step-input { flex: 1; height: 40px; text-align: center; font-size: 14px; border-left: 1px solid #d9e2ee; border-right: 1px solid #d9e2ee; }
 .cart-btn, .buy-btn { height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 800; }
 .cart-btn { background: #172033; }
-.buy-btn { background: #2563eb; }
+.buy-btn { background: #2f8a5a; }
 </style>

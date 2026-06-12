@@ -2,14 +2,25 @@
   <view class="page">
     <!-- 顶部：品牌信息 -->
     <view class="header-bar">
+      <view class="brand-mark">栀</view>
       <view class="merchant-info">
-        <text class="merchant-name">饮品下单</text>
-        <text class="merchant-subtitle">公司资质与商品订购</text>
+        <text class="merchant-name">栀致饮品</text>
+        <text class="merchant-subtitle">Gardenia beverage order</text>
       </view>
     </view>
 
     <!-- 公司资质轮播 -->
-    <swiper v-if="banners.length" class="banner-swiper" autoplay circular indicator-dots indicator-color="rgba(255,255,255,0.55)" indicator-active-color="#ffffff">
+    <swiper
+      v-if="banners.length"
+      class="banner-swiper"
+      autoplay
+      circular
+      :interval="3000"
+      :duration="500"
+      indicator-dots
+      indicator-color="rgba(255,255,255,0.55)"
+      indicator-active-color="#ffffff"
+    >
       <swiper-item v-for="item in banners" :key="item.id" @click="handleBannerTap(item)">
         <image class="banner-image" :src="imageUrl(item.image)" mode="aspectFill" />
         <view class="banner-caption" v-if="item.title">
@@ -279,17 +290,18 @@ onShareTimeline(() => ({
 </script>
 
 <style scoped>
-.page { height: 100vh; display: flex; flex-direction: column; background: #eef2f6; }
-.header-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 10px; background: #ffffff; color: #172033; flex-shrink: 0; border-bottom: 1px solid #edf1f6; }
+.page { height: 100vh; display: flex; flex-direction: column; background: #f4f7f2; }
+.header-bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; background: #fffdf8; color: #1f3527; flex-shrink: 0; border-bottom: 1px solid #e4eadf; }
+.brand-mark { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 800; background: linear-gradient(145deg, #2f8a5a, #d89a42); box-shadow: 0 8px 20px rgba(77,111,74,0.18); flex-shrink: 0; }
 .merchant-info { display: flex; flex-direction: column; gap: 2px; }
 .merchant-name { font-size: 19px; font-weight: 800; line-height: 25px; letter-spacing: 0.2px; }
-.merchant-subtitle { font-size: 12px; color: #7b8494; }
+.merchant-subtitle { font-size: 12px; color: #6b7f6f; }
 .header-actions { display: flex; gap: 16px; }
 .scan-btn { font-size: 20px; }
 .banner-swiper { height: 158px; margin: 12px 12px 10px; border-radius: 14px; overflow: hidden; background: #dfe5ee; box-shadow: 0 10px 28px rgba(15,23,42,0.08); flex-shrink: 0; position: relative; }
 .banner-image { width: 100%; height: 100%; display: block; }
 .banner-caption { position: absolute; left: 12px; right: 12px; bottom: 12px; color: #fff; font-size: 14px; font-weight: 700; text-shadow: 0 1px 8px rgba(0,0,0,0.45); }
-.qualification-card { height: 158px; margin: 12px 12px 10px; border-radius: 14px; box-sizing: border-box; padding: 18px; background: linear-gradient(135deg, #172033, #2563eb); color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; overflow: hidden; box-shadow: 0 10px 28px rgba(15,23,42,0.12); }
+.qualification-card { height: 158px; margin: 12px 12px 10px; border-radius: 14px; box-sizing: border-box; padding: 18px; background: linear-gradient(135deg, #1f3527, #2f8a5a 56%, #d89a42); color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; overflow: hidden; box-shadow: 0 10px 28px rgba(47,138,90,0.18); }
 .qc-copy { display: flex; flex-direction: column; gap: 8px; max-width: 230px; }
 .qc-title { font-size: 21px; font-weight: 800; line-height: 28px; }
 .qc-desc { font-size: 12px; line-height: 18px; color: rgba(255,255,255,0.82); }
@@ -298,7 +310,7 @@ onShareTimeline(() => ({
 .search-input { background: #fff; border-radius: 12px; padding: 11px 14px; font-size: 14px; box-shadow: 0 0 0 1px #e6ebf2 inset; }
 .category-scroll { white-space: nowrap; padding: 0 12px 10px; background: transparent; flex-shrink: 0; box-sizing: border-box; }
 .category-tag { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; margin-right: 8px; border-radius: 999px; background: #fff; font-size: 13px; color: #4c5667; transition: all 0.2s; box-shadow: 0 0 0 1px #e6ebf2 inset; }
-.category-tag.active { background: #172033; color: #fff; font-weight: 700; box-shadow: none; }
+.category-tag.active { background: #2f8a5a; color: #fff; font-weight: 700; box-shadow: none; }
 .category-name { white-space: nowrap; }
 .category-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #eef1f5; color: #7b8494; font-size: 10px; line-height: 16px; text-align: center; box-sizing: border-box; }
 .category-tag.active .category-count { background: rgba(255,255,255,0.24); color: #fff; }
@@ -306,7 +318,7 @@ onShareTimeline(() => ({
 .product-card { background: #fff; border-radius: 12px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: stretch; box-shadow: 0 0 0 1px #e8edf4 inset; }
 .p-image { width: 92px; min-height: 132px; background: #f5f7fa; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .product-image { width: 100%; height: 100%; display: block; }
-.img-placeholder { width: 44px; height: 44px; background: #e8f0fe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #1a73e8; font-weight: bold; }
+.img-placeholder { width: 44px; height: 44px; background: #e7f2e9; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2f8a5a; font-weight: bold; }
 .spec-tag { position: absolute; bottom: 6px; left: 6px; right: 6px; background: rgba(0,0,0,0.62); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; }
 .p-body { flex: 1; padding: 11px 12px 10px; display: flex; flex-direction: column; min-width: 0; box-sizing: border-box; }
 .p-name { font-size: 15px; font-weight: 800; color: #172033; line-height: 21px; margin-bottom: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
@@ -322,9 +334,9 @@ onShareTimeline(() => ({
 .stepper { display: flex; align-items: center; border: 1px solid #d9e2ee; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #fff; }
 .step-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #334155; background: #f8fafc; }
 .step-input { width: 40px; height: 28px; text-align: center; font-size: 13px; border-left: 1px solid #d9e2ee; border-right: 1px solid #d9e2ee; }
-.add-cart-btn { background: #2563eb; color: #fff; font-size: 12px; padding: 7px 11px; border-radius: 8px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-.float-cart { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #172033; border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; color: #fff; box-shadow: 0 12px 30px rgba(15,23,42,0.22); }
-.cart-badge { background: #fff; color: #172033; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 10px; }
+.add-cart-btn { background: #2f8a5a; color: #fff; font-size: 12px; padding: 7px 11px; border-radius: 8px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.float-cart { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #1f3527; border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; color: #fff; box-shadow: 0 12px 30px rgba(31,53,39,0.22); }
+.cart-badge { background: #d89a42; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 10px; }
 .cart-label { flex: 1; font-size: 15px; font-weight: 600; }
 .cart-amount { font-size: 17px; font-weight: 700; }
 .empty-products { text-align: center; color: #999; padding: 60px 0; font-size: 14px; }
@@ -332,5 +344,5 @@ onShareTimeline(() => ({
 .role-sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; }
 .sheet-title { font-size: 16px; font-weight: 700; display: block; margin-bottom: 12px; text-align: center; }
 .role-option { padding: 14px; font-size: 15px; border-radius: 10px; margin-bottom: 6px; background: #f5f6f8; }
-.role-option.selected { background: #e8f0fe; color: #1a73e8; font-weight: 600; }
+.role-option.selected { background: #e7f2e9; color: #2f8a5a; font-weight: 600; }
 </style>

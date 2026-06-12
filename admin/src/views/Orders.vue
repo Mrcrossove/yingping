@@ -11,6 +11,13 @@
         <el-select v-model="filterStatus" placeholder="订单状态" clearable class="filter-item status-select">
           <el-option v-for="(v, k) in statusMap" :key="k" :label="v" :value="k" />
         </el-select>
+        <el-select v-model="settlementType" placeholder="结算方式" clearable class="filter-item settlement-select">
+          <el-option label="微信支付" value="wechat" />
+          <el-option label="月结" value="monthly" />
+        </el-select>
+        <el-select v-model="settlementStatus" placeholder="结算状态" clearable class="filter-item settlement-status-select">
+          <el-option v-for="(v, k) in settlementStatusMap" :key="k" :label="v" :value="k" />
+        </el-select>
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -68,6 +75,21 @@
             <el-tag :type="statusTagType(row.status)">{{ statusMap[row.status] }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="settlementType" label="结算方式" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.settlementType === 'monthly' ? 'warning' : 'success'">
+              {{ settlementTypeMap[row.settlementType] || row.settlementType }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="settlementStatus" label="结算状态" width="120">
+          <template #default="{ row }">
+            {{ settlementStatusMap[row.settlementStatus] || row.settlementStatus }}
+          </template>
+        </el-table-column>
+        <el-table-column label="支付状态" width="100">
+          <template #default="{ row }">{{ paymentStatusText(row) }}</template>
+        </el-table-column>
         <el-table-column v-if="showStaffColumns" prop="salesperson.realName" label="业务员" width="100" />
         <el-table-column v-if="showStaffColumns" prop="maker.realName" label="制作员" width="100" />
         <el-table-column v-if="showStaffColumns" prop="delivery.realName" label="配送员" width="100" />
@@ -124,6 +146,8 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const filterStatus = ref('')
+const settlementType = ref('')
+const settlementStatus = ref('')
 const dateRange = ref<[string, string] | null>(null)
 const staffRole = ref('')
 const staffId = ref<number | null>(null)
@@ -138,16 +162,43 @@ const statusMap: Record<string, string> = {
   pending: '待接单', accepted: '已接单', making: '制作中',
   made: '已制作', delivering: '配送中', delivered: '已送达', completed: '已完成', cancelled: '已取消',
 }
+const settlementTypeMap: Record<string, string> = {
+  wechat: '微信支付',
+  monthly: '月结',
+}
+const settlementStatusMap: Record<string, string> = {
+  unpaid: '未支付',
+  paid: '已支付',
+  monthly_pending: '月结待结算',
+  monthly_settled: '月结已结算',
+  refunding: '退款中',
+  refunded: '已退款',
+}
+const paymentStatusMap: Record<string, string> = {
+  pending: '待支付',
+  paid: '已支付',
+  refunding: '退款中',
+  refunded: '已退款',
+  failed: '支付失败',
+}
 
 function statusTagType(status: string) {
   const map: Record<string, string> = { pending: 'warning', accepted: 'info', making: '', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
   return map[status] || ''
 }
 
+function paymentStatusText(row: any) {
+  if (row.settlementType === 'monthly') return '-'
+  const status = row.payment?.status
+  return status ? paymentStatusMap[status] || status : '未创建'
+}
+
 function buildQueryParams() {
   const params: any = {}
   if (keyword.value.trim()) params.keyword = keyword.value.trim()
   if (filterStatus.value) params.status = filterStatus.value
+  if (settlementType.value) params.settlementType = settlementType.value
+  if (settlementStatus.value) params.settlementStatus = settlementStatus.value
   if (dateRange.value?.[0]) params.startDate = dateRange.value[0]
   if (dateRange.value?.[1]) params.endDate = dateRange.value[1]
   if (staffRole.value && staffId.value) {
@@ -182,6 +233,8 @@ function handleSearch() {
 function handleReset() {
   keyword.value = ''
   filterStatus.value = ''
+  settlementType.value = ''
+  settlementStatus.value = ''
   dateRange.value = null
   staffRole.value = ''
   staffId.value = null
@@ -249,6 +302,8 @@ onMounted(fetchOrders)
 .filter-item { flex-shrink: 0; }
 .keyword-input { width: 180px; }
 .status-select { width: 130px; }
+.settlement-select { width: 120px; }
+.settlement-status-select { width: 150px; }
 .date-range { width: 260px; }
 .staff-role { width: 120px; }
 .staff-select { width: 210px; }

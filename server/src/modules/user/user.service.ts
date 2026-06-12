@@ -132,6 +132,68 @@ export class UserService {
     return { list, total, page, pageSize };
   }
 
+  async getMyMerchantProfile(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        realName: true,
+        phone: true,
+        role: true,
+        merchantProfile: true,
+      },
+    });
+    if (!user || user.role !== 'merchant') throw new ForbiddenException('只有商户可以维护商户信息');
+    return user;
+  }
+
+  async updateMyMerchantProfile(userId: number, data: {
+    shopName?: string;
+    contactName?: string;
+    contactPhone?: string;
+    shopAddress?: string;
+    description?: string;
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'merchant') throw new ForbiddenException('只有商户可以维护商户信息');
+
+    const shopName = (data.shopName || '').trim();
+    const contactName = (data.contactName || '').trim();
+    const contactPhone = (data.contactPhone || '').trim();
+    const shopAddress = (data.shopAddress || '').trim();
+    const description = (data.description || '').trim();
+    if (!shopName) throw new BadRequestException('请填写商户名称');
+    if (!contactName) throw new BadRequestException('请填写联系人');
+    if (!/^1\d{10}$/.test(contactPhone)) throw new BadRequestException('请填写正确手机号');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { realName: shopName, phone: contactPhone },
+      });
+      await tx.merchantProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          shopName,
+          contactName,
+          contactPhone,
+          shopAddress,
+          description,
+        },
+        update: {
+          shopName,
+          contactName,
+          contactPhone,
+          shopAddress,
+          description,
+        },
+      });
+    });
+
+    return this.getMyMerchantProfile(userId);
+  }
+
   async getMerchantDashboard(query: {
     page?: number;
     pageSize?: number;

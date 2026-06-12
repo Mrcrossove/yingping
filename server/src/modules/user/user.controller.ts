@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
@@ -48,6 +48,20 @@ export class UserController {
   async getMerchants(@Query() query: any) {
     const data = await this.userService.getMerchants(query);
     return ApiResult.success(data);
+  }
+
+  @Get('me/merchant-profile')
+  @Roles('merchant')
+  async getMyMerchantProfile(@Request() req) {
+    const data = await this.userService.getMyMerchantProfile(req.user.id);
+    return ApiResult.success(data);
+  }
+
+  @Put('me/merchant-profile')
+  @Roles('merchant')
+  async updateMyMerchantProfile(@Request() req, @Body() body: any) {
+    const data = await this.userService.updateMyMerchantProfile(req.user.id, body);
+    return ApiResult.success(data, '商户信息已保存');
   }
 
   @Get('merchant-dashboard')

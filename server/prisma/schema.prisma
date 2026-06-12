@@ -147,6 +147,9 @@ model Order {
   receiverLongitude Decimal?  @map("receiver_longitude") @db.Decimal(10, 6)
   receiverAdcode String?      @map("receiver_adcode") @db.VarChar(12)
   stockDeducted Boolean       @default(false) @map("stock_deducted")
+  settlementType OrderSettlementType @default(wechat) @map("settlement_type")
+  settlementStatus OrderSettlementStatus @default(unpaid) @map("settlement_status")
+  settledAt      DateTime?   @map("settled_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -172,6 +175,20 @@ enum OrderStatus {
   delivered
   completed
   cancelled
+}
+
+enum OrderSettlementType {
+  wechat
+  monthly
+}
+
+enum OrderSettlementStatus {
+  unpaid
+  paid
+  monthly_pending
+  monthly_settled
+  refunding
+  refunded
 }
 
 model OrderItem {

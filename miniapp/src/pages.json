@@ -29,6 +29,10 @@
       "style": { "navigationBarTitleText": "我的" }
     },
     {
+      "path": "pages/merchant-profile/merchant-profile",
+      "style": { "navigationBarTitleText": "商户信息" }
+    },
+    {
       "path": "pages/notifications/notifications",
       "style": { "navigationBarTitleText": "消息通知" }
     },
@@ -40,13 +44,13 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "饮品下单",
-    "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F8F8F8"
+    "navigationBarBackgroundColor": "#F4F7F2",
+    "backgroundColor": "#F4F7F2"
   },
   "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#409EFF",
-    "backgroundColor": "#FFFFFF",
+    "color": "#879487",
+    "selectedColor": "#2F8A5A",
+    "backgroundColor": "#FFFDF8",
     "borderStyle": "black",
     "list": [
       { "pagePath": "pages/index/index", "text": "首页", "iconPath": "static/tab/home.png", "selectedIconPath": "static/tab/home-active.png" },

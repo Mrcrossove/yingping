@@ -17,6 +17,7 @@ export class PaymentService {
     if (!order) throw new BadRequestException('订单不存在');
     this.assertCanAccessOrder(order, user);
     if (order.status !== 'pending') throw new BadRequestException('当前订单状态不允许支付');
+    if (order.settlementType !== 'wechat') throw new BadRequestException('月结订单无需微信支付');
     if (order.payment) throw new BadRequestException('已有支付记录');
 
     const payment = await this.prisma.payment.create({
@@ -104,7 +105,7 @@ export class PaymentService {
     if (!orderNo || !transactionId) throw new BadRequestException('支付回调订单参数缺失');
 
     await this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findFirst({ where: { orderNo } });
+      const payment = await tx.payment.findFirst({ where: { orderNo }, include: { order: true } });
       if (!payment) throw new BadRequestException('支付记录不存在');
       if (payment.status === 'paid') return;
       if (payment.status !== 'pending') throw new BadRequestException('支付状态不允许更新');
@@ -112,6 +113,27 @@ export class PaymentService {
       await tx.payment.update({
         where: { id: payment.id },
         data: { transactionId, status: 'paid', paidAt: new Date() },
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          settlementStatus: 'paid',
+          ...(payment.order.status === 'pending'
+            ? {
+                status: 'accepted',
+                flows: {
+                  create: {
+                    fromRole: 'merchant',
+                    toRole: 'salesperson',
+                    operatorId: payment.userId,
+                    action: '系统确认订单',
+                    remark: '微信支付成功后自动接单',
+                  },
+                },
+              }
+            : {}),
+        },
       });
     });
 
@@ -188,6 +210,11 @@ export class PaymentService {
         data: { status: 'refunding' },
       });
 
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: { settlementStatus: 'refunding' },
+      });
+
       const changed = await tx.order.updateMany({
         where: { id: payment.orderId, status: { notIn: ['delivered', 'completed', 'cancelled'] } },
         data: { status: 'cancelled' },
@@ -222,7 +249,14 @@ export class PaymentService {
   }
 
   async markRefundedByOrderNo(orderNo: string, status: PaymentStatus = 'refunded') {
-    return this.prisma.payment.updateMany({ where: { orderNo }, data: { status } });
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({ where: { orderNo }, data: { status } });
+      await tx.order.updateMany({
+        where: { orderNo },
+        data: { settlementStatus: status === 'refunded' ? 'refunded' : 'refunding' },
+      });
+      return result;
+    });
   }
 
   async handleRefundNotify(body: any, headers: { rawBody?: Buffer; timestamp?: string; nonce?: string; signature?: string; serial?: string }) {

@@ -132,6 +132,14 @@ const paymentStatusMap: Record<string, string> = {
   refunded: '已退款',
   failed: '支付失败',
 }
+const settlementStatusMap: Record<string, string> = {
+  unpaid: '未支付',
+  paid: '已支付',
+  monthly_pending: '月结待结算',
+  monthly_settled: '月结已结算',
+  refunding: '退款中',
+  refunded: '已退款',
+}
 
 const stats = computed(() => {
   const counts: Record<string, number> = {}
@@ -139,7 +147,7 @@ const stats = computed(() => {
   return [
     { label: '待接单', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
     { label: '制作中', count: counts.making || 0, color: '#67C23A', status: 'making' },
-    { label: '待配送', count: counts.delivering || 0, color: '#409EFF', status: 'delivering' },
+    { label: '待配送', count: counts.delivering || 0, color: '#2f8a5a', status: 'delivering' },
     { label: '已完成', count: counts.delivered || 0, color: '#909399', status: 'delivered' },
   ]
 })
@@ -159,7 +167,9 @@ async function fetchOrders() {
       merchantPhone: order.merchant?.phone || '',
       salespersonPhone: order.salesperson?.phone || '',
       paymentStatus: order.payment?.status || '',
-      paymentStatusText: order.payment?.status ? paymentStatusMap[order.payment.status] || order.payment.status : '未支付',
+      paymentStatusText: order.settlementType === 'monthly'
+        ? settlementStatusMap[order.settlementStatus] || '月结'
+        : (order.payment?.status ? paymentStatusMap[order.payment.status] || order.payment.status : '未支付'),
       createdAt: new Date(order.createdAt).toLocaleString(),
     }))
   } catch {
@@ -184,10 +194,12 @@ function callSalesperson(order: any) {
 }
 
 function canCancel(order: any) {
+  if (order.settlementType === 'monthly') return false
   return order.status === 'pending' && !['paid', 'refunding', 'refunded'].includes(order.paymentStatus)
 }
 
 function canRefund(order: any) {
+  if (order.settlementType === 'monthly') return false
   return order.status === 'pending' && order.paymentStatus === 'paid'
 }
 
@@ -248,14 +260,14 @@ onShow(() => {
 </script>
 
 <style scoped>
-.page { height: 100vh; display: flex; flex-direction: column; background: #f5f6f8; }
+.page { height: 100vh; display: flex; flex-direction: column; background: #f4f7f2; }
 .stats-row { display: flex; gap: 8px; padding: 12px 12px 4px; flex-shrink: 0; }
 .stat-card { flex: 1; background: #fff; border-radius: 10px; padding: 12px 8px; text-align: center; border-top: 3px solid #ddd; }
 .stat-num { font-size: 22px; font-weight: 700; display: block; }
 .stat-label { font-size: 11px; color: #999; margin-top: 2px; }
 .status-tabs { white-space: nowrap; padding: 8px 12px; flex-shrink: 0; }
 .tab-item { display: inline-block; padding: 7px 16px; margin-right: 8px; border-radius: 16px; font-size: 13px; background: #fff; color: #666; }
-.tab-item.active { background: #1a73e8; color: #fff; font-weight: 600; }
+.tab-item.active { background: #2f8a5a; color: #fff; font-weight: 600; }
 .order-list { flex: 1; padding: 8px 12px; }
 .order-card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
 .o-header { display: flex; align-items: center; margin-bottom: 8px; position: relative; }
@@ -275,16 +287,16 @@ onShow(() => {
 .oi-qty { color: #666; }
 .oi-price { color: #e8453c; font-weight: 600; }
 .o-toggle { padding: 4px 0; }
-.o-toggle text { font-size: 12px; color: #1a73e8; }
+.o-toggle text { font-size: 12px; color: #2f8a5a; }
 .o-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; padding-top: 8px; border-top: 1px solid #f0f0f0; }
 .o-total { font-size: 16px; font-weight: 700; color: #e8453c; }
 .o-note { font-size: 11px; color: #999; display: block; }
 .o-actions { display: flex; gap: 8px; }
 .btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #fff; }
-.btn.primary { background: #1a73e8; }
+.btn.primary { background: #2f8a5a; }
 .btn.warning { background: #E6A23C; }
 .btn.success { background: #67C23A; }
-.btn.outline { border: 1px solid #1a73e8; color: #1a73e8; background: #fff; }
+.btn.outline { border: 1px solid #2f8a5a; color: #2f8a5a; background: #fff; }
 .btn.danger { background: #f56c6c; }
 .btn.outline.danger { border-color: #f56c6c; color: #f56c6c; background: #fff; }
 .empty { text-align: center; padding: 60px 0; color: #999; }
@@ -295,5 +307,5 @@ onShow(() => {
 .confirm-btns { display: flex; gap: 12px; }
 .c-btn { flex: 1; text-align: center; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600; }
 .c-btn.cancel { background: #f5f6f8; color: #666; }
-.c-btn.primary { background: #1a73e8; color: #fff; }
+.c-btn.primary { background: #2f8a5a; color: #fff; }
 </style>

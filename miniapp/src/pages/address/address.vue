@@ -190,19 +190,19 @@ onShow(fetchList)
 </script>
 
 <style scoped>
-.container { padding: 10px; }
+.container { min-height: 100vh; padding: 10px; box-sizing: border-box; background: #f4f7f2; }
 .addr-card { background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
-.addr-card.default { border: 1px solid #1a73e8; }
+.addr-card.default { border: 1px solid #2f8a5a; }
 .addr-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .addr-name { font-size: 16px; font-weight: 700; }
 .addr-phone { font-size: 14px; color: #666; }
-.addr-tag { font-size: 10px; background: #1a73e8; color: #fff; padding: 2px 6px; border-radius: 4px; }
+.addr-tag { font-size: 10px; background: #2f8a5a; color: #fff; padding: 2px 6px; border-radius: 4px; }
 .addr-location { display: block; font-size: 14px; font-weight: 700; color: #222; margin-bottom: 4px; }
 .addr-detail { font-size: 13px; color: #666; margin-bottom: 8px; }
 .addr-actions { display: flex; gap: 16px; }
-.aa-link { font-size: 13px; color: #1a73e8; }
+.aa-link { font-size: 13px; color: #2f8a5a; }
 .aa-link.danger { color: #f56c6c; }
-.add-btn { background: #fff; border-radius: 10px; padding: 14px; text-align: center; color: #1a73e8; font-weight: 600; font-size: 15px; }
+.add-btn { background: #fff; border-radius: 10px; padding: 14px; text-align: center; color: #2f8a5a; font-weight: 600; font-size: 15px; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: flex-end; }
 .form-box { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; max-height: 80vh; overflow-y: auto; }
 .form-title { font-size: 17px; font-weight: 700; display: block; margin-bottom: 16px; text-align: center; }
@@ -211,9 +211,9 @@ onShow(fetchList)
 .location-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .location-title { font-size: 15px; font-weight: 700; color: #1f2937; }
 .location-sub { font-size: 12px; color: #6b7280; line-height: 1.4; }
-.location-action { font-size: 13px; color: #1a73e8; font-weight: 700; white-space: nowrap; }
+.location-action { font-size: 13px; color: #2f8a5a; font-weight: 700; white-space: nowrap; }
 .region-picker { border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; color: #333; }
 .form-btns { display: flex; gap: 12px; margin-top: 16px; }
 .fb-cancel { flex: 1; background: #f5f5f5; color: #666; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }
-.fb-save { flex: 1; background: #1a73e8; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }
+.fb-save { flex: 1; background: #2f8a5a; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; }
 </style>

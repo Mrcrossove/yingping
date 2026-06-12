@@ -10,5 +10,9 @@ onLaunch((options: any) => {
 </script>
 
 <style>
-page { background: #f5f5f5; font-size: 14px; color: #333; }
+page {
+  background: #f4f7f2;
+  color: #26382c;
+  font-size: 14px;
+}
 </style>

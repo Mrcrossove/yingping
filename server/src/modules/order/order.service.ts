@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, Role } from '@prisma/client';
+import { OrderSettlementType, OrderStatus, Role } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 import { NotificationService } from '../notification/notification.service';
@@ -25,8 +25,10 @@ export class OrderService {
     receiverLatitude?: number;
     receiverLongitude?: number;
     receiverAdcode?: string;
+    settlementType?: OrderSettlementType;
   }, merchantId: number) {
     if (!dto.items?.length) throw new BadRequestException('订单商品不能为空');
+    const settlementType = dto.settlementType === 'monthly' ? 'monthly' : 'wechat';
     const orderNo = this.generateOrderNo();
     const addressSnapshot = await this.resolveAddressSnapshot(dto, merchantId);
 
@@ -70,17 +72,35 @@ export class OrderService {
           note: dto.note,
           ...addressSnapshot,
           stockDeducted,
-          status: 'pending',
+          settlementType,
+          settlementStatus: settlementType === 'monthly' ? 'monthly_pending' : 'unpaid',
+          status: settlementType === 'monthly' ? 'accepted' : 'pending',
           items: {
             create: items,
           },
           flows: {
-            create: {
-              fromRole: 'merchant',
-              toRole: 'salesperson',
-              operatorId: merchantId,
-              action: '商户下单',
-            },
+            create: settlementType === 'monthly'
+              ? [
+                  {
+                    fromRole: 'merchant',
+                    toRole: 'salesperson',
+                    operatorId: merchantId,
+                    action: '商户月结下单',
+                  },
+                  {
+                    fromRole: 'merchant',
+                    toRole: 'salesperson',
+                    operatorId: merchantId,
+                    action: '系统确认订单',
+                    remark: '月结订单创建后自动接单',
+                  },
+                ]
+              : {
+                  fromRole: 'merchant',
+                  toRole: 'salesperson',
+                  operatorId: merchantId,
+                  action: '商户下单',
+                },
           },
         },
         include: { items: { include: { product: true } }, flows: true },
@@ -88,7 +108,7 @@ export class OrderService {
     });
 
     await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
-      title: '有新的订单待接单',
+      title: settlementType === 'monthly' ? '有新的月结订单待派单' : '有新的订单待接单',
       content: `订单 ${order.orderNo} 金额 ¥${Number(order.totalAmount).toFixed(2)}`,
       type: 'order',
     });
@@ -98,16 +118,25 @@ export class OrderService {
 
   async findAll(query: {
     page?: number; pageSize?: number; status?: OrderStatus;
-    merchantId?: number; salespersonId?: number; makerId?: number; deliveryId?: number;
-    keyword?: string; startDate?: string; endDate?: string;
+    merchantId?: number; salespersonId?: number; salespersonIdOrUnassigned?: number; makerId?: number; deliveryId?: number;
+    keyword?: string; startDate?: string; endDate?: string; settlementType?: string; settlementStatus?: string;
   }) {
     const { page = 1, pageSize = 20 } = query;
     const where: any = {};
     if (query.status) where.status = query.status;
     if (query.merchantId) where.merchantId = +query.merchantId;
     if (query.salespersonId) where.salespersonId = +query.salespersonId;
+    if (query.salespersonIdOrUnassigned) {
+      where.OR = [
+        { salespersonId: +query.salespersonIdOrUnassigned },
+        { status: 'pending' },
+        { status: 'accepted', salespersonId: null },
+      ];
+    }
     if (query.makerId) where.makerId = +query.makerId;
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
+    if (query.settlementType) where.settlementType = query.settlementType;
+    if (query.settlementStatus) where.settlementStatus = query.settlementStatus;
     if (query.keyword) where.orderNo = { contains: query.keyword };
     if (query.startDate || query.endDate) {
       where.createdAt = {};
@@ -126,6 +155,7 @@ export class OrderService {
           salesperson: { select: { id: true, realName: true, phone: true } },
           maker: { select: { id: true, realName: true, phone: true } },
           delivery: { select: { id: true, realName: true, phone: true } },
+          payment: true,
           flows: {
             include: { operator: { select: { id: true, realName: true, role: true } } },
             orderBy: { createdAt: 'asc' },
@@ -394,7 +424,7 @@ export class OrderService {
         where: { id: orderId },
         include: {
           items: { include: { product: true } },
-          merchant: { select: { id: true, realName: true, phone: true } },
+          merchant: { select: { id: true, realName: true, phone: true, merchantProfile: true } },
           salesperson: { select: { id: true, realName: true, phone: true } },
           maker: { select: { id: true, realName: true, phone: true } },
           delivery: { select: { id: true, realName: true, phone: true } },
@@ -470,7 +500,7 @@ export class OrderService {
         where: { id: orderId },
         include: {
           items: { include: { product: true } },
-          merchant: { select: { id: true, realName: true, phone: true } },
+          merchant: { select: { id: true, realName: true, phone: true, merchantProfile: true } },
           salesperson: { select: { id: true, realName: true, phone: true } },
           maker: { select: { id: true, realName: true, phone: true } },
           delivery: { select: { id: true, realName: true, phone: true } },

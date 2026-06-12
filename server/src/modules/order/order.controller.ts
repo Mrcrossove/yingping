@@ -22,7 +22,7 @@ export class OrderController {
   @Get()
   async findAll(@Query() query: any, @Request() req) {
     if (req.user.role === 'merchant') query.merchantId = req.user.id;
-    else if (req.user.role === 'salesperson') query.salespersonId = req.user.id;
+    else if (req.user.role === 'salesperson') query.salespersonIdOrUnassigned = req.user.id;
     else if (req.user.role === 'maker') query.makerId = req.user.id;
     else if (req.user.role === 'delivery') query.deliveryId = req.user.id;
     const data = await this.orderService.findAll(query);

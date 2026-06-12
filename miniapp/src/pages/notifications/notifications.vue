@@ -40,9 +40,9 @@ onShow(fetchList)
 </script>
 
 <style scoped>
-.container { padding: 10px; }
+.container { min-height: 100vh; padding: 10px; box-sizing: border-box; background: #f4f7f2; }
 .noti-item { background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 8px; display: flex; }
-.noti-item.unread { border-left: 3px solid #1a73e8; }
+.noti-item.unread { border-left: 3px solid #2f8a5a; }
 .ni-left { display: flex; align-items: flex-start; flex: 1; }
 .ni-dot { width: 8px; height: 8px; border-radius: 50%; background: #e8453c; margin-right: 8px; margin-top: 6px; flex-shrink: 0; }
 .ni-text { display: flex; flex-direction: column; flex: 1; }

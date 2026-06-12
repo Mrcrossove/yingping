@@ -16,6 +16,8 @@ export class ExportService {
     salespersonId?: string;
     makerId?: string;
     deliveryId?: string;
+    settlementType?: string;
+    settlementStatus?: string;
   }) {
     const where: any = {};
     if (query.status) where.status = query.status;
@@ -24,6 +26,8 @@ export class ExportService {
     if (query.salespersonId) where.salespersonId = +query.salespersonId;
     if (query.makerId) where.makerId = +query.makerId;
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
+    if (query.settlementType) where.settlementType = query.settlementType;
+    if (query.settlementStatus) where.settlementStatus = query.settlementStatus;
     if (query.startDate || query.endDate) {
       where.createdAt = {};
       if (query.startDate) where.createdAt.gte = new Date(query.startDate);
@@ -54,6 +58,8 @@ export class ExportService {
       { header: '单价', key: 'price', width: 10 },
       { header: '总金额', key: 'totalAmount', width: 12 },
       { header: '状态', key: 'status', width: 12 },
+      { header: '结算方式', key: 'settlementType', width: 12 },
+      { header: '结算状态', key: 'settlementStatus', width: 14 },
       { header: '业务员', key: 'salesperson', width: 12 },
       { header: '制作员', key: 'maker', width: 12 },
       { header: '配送员', key: 'delivery', width: 12 },
@@ -76,6 +82,8 @@ export class ExportService {
           price: Number(item.price),
           totalAmount: Number(order.totalAmount),
           status: order.status,
+          settlementType: order.settlementType === 'monthly' ? '月结' : '微信支付',
+          settlementStatus: this.settlementStatusText(order.settlementStatus),
           salesperson: order.salesperson?.realName,
           maker: order.maker?.realName,
           delivery: order.delivery?.realName,
@@ -181,5 +189,17 @@ export class ExportService {
     res.setHeader('Content-Disposition', 'attachment; filename=withdrawals.xlsx');
     await workbook.xlsx.write(res);
     res.end();
+  }
+
+  private settlementStatusText(status: string) {
+    const map: Record<string, string> = {
+      unpaid: '未支付',
+      paid: '已支付',
+      monthly_pending: '月结待结算',
+      monthly_settled: '月结已结算',
+      refunding: '退款中',
+      refunded: '已退款',
+    };
+    return map[status] || status || '';
   }
 }

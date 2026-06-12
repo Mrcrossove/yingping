@@ -20,6 +20,8 @@ export const productApi = {
 export const userApi = {
   dispatchStaff: (role: 'maker' | 'delivery') => get('/users/dispatch-staff', { role }),
   merchants: (params?: any) => get('/users/merchants', params),
+  myMerchantProfile: () => get('/users/me/merchant-profile'),
+  updateMyMerchantProfile: (data: any) => put('/users/me/merchant-profile', data),
 }
 
 export const bannerApi = {

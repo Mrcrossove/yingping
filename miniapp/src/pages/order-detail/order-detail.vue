@@ -5,6 +5,8 @@
       <view class="section">
         <view class="row"><text class="label">订单号</text><text>{{ order.orderNo }}</text></view>
         <view class="row"><text class="label">状态</text><text class="status">{{ statusMap[order.status] }}</text></view>
+        <view class="row"><text class="label">结算方式</text><text>{{ settlementTypeText }}</text></view>
+        <view class="row"><text class="label">结算状态</text><text class="status">{{ settlementStatusText }}</text></view>
         <view class="row"><text class="label">支付状态</text><text class="status">{{ paymentStatusText }}</text></view>
         <view class="row"><text class="label">金额</text><text class="price">¥{{ Number(order.totalAmount).toFixed(2) }}</text></view>
         <view class="row" v-if="order.note"><text class="label">备注</text><text>{{ order.note }}</text></view>
@@ -84,6 +86,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { orderApi, paymentApi, reviewApi, userApi } from '@/api/index'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
+import { isPaymentCanceled, requestOrderPayment } from '@/utils/payment'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -102,6 +105,14 @@ const paymentStatusMap: Record<string, string> = {
   refunded: '已退款',
   failed: '支付失败',
 }
+const settlementStatusMap: Record<string, string> = {
+  unpaid: '未支付',
+  paid: '已支付',
+  monthly_pending: '月结待结算',
+  monthly_settled: '月结已结算',
+  refunding: '退款中',
+  refunded: '已退款',
+}
 
 const canOperate = computed(() => {
   if (!order.value || !userStore.user) return false
@@ -114,13 +125,20 @@ const canOperate = computed(() => {
 })
 
 const paymentStatus = computed(() => order.value?.payment?.status || '')
-const paymentStatusText = computed(() => paymentStatus.value ? paymentStatusMap[paymentStatus.value] || paymentStatus.value : '未创建支付单')
+const settlementTypeText = computed(() => order.value?.settlementType === 'monthly' ? '月结' : '微信支付')
+const settlementStatusText = computed(() => settlementStatusMap[order.value?.settlementStatus] || order.value?.settlementStatus || '-')
+const paymentStatusText = computed(() => order.value?.settlementType === 'monthly' ? '-' : (paymentStatus.value ? paymentStatusMap[paymentStatus.value] || paymentStatus.value : '未创建支付单'))
 const isPaid = computed(() => paymentStatus.value === 'paid')
 const isRefunding = computed(() => paymentStatus.value === 'refunding')
 const isRefunded = computed(() => paymentStatus.value === 'refunded')
 const canMerchantCancel = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && !isPaid.value && !isRefunding.value && !isRefunded.value)
 const canRequestRefund = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && isPaid.value)
-const canPay = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && !paymentStatus.value)
+const canPay = computed(() =>
+  userStore.user?.role === 'merchant'
+  && order.value?.status === 'pending'
+  && order.value?.settlementType !== 'monthly'
+  && ['', 'pending', 'failed'].includes(paymentStatus.value)
+)
 const canReorder = computed(() => userStore.user?.role === 'merchant' && ['completed', 'delivered'].includes(order.value?.status))
 const canDispatchMaker = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'accepted')
 const canDispatchDelivery = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'made')
@@ -216,27 +234,11 @@ async function handleRequestRefund() {
 
 async function handlePay() {
   try {
-    await paymentApi.create(order.value.id).catch((error: any) => {
-      const message = error?.message || ''
-      if (!message.includes('已有支付记录')) throw error
-    })
-    const payParams = await paymentApi.jsapi(order.value.id, userStore.user?.openid)
-    await new Promise<void>((resolve, reject) => {
-      uni.requestPayment({
-        provider: 'wxpay',
-        timeStamp: payParams.timeStamp,
-        nonceStr: payParams.nonceStr,
-        package: payParams.package,
-        signType: payParams.signType || 'RSA',
-        paySign: payParams.paySign,
-        success: () => resolve(),
-        fail: reject,
-      })
-    })
+    await requestOrderPayment(order.value.id, userStore.user?.openid)
     uni.showToast({ title: '支付成功', icon: 'success' })
     await refreshOrder()
   } catch (error: any) {
-    if (error?.errMsg?.includes('cancel')) return
+    if (isPaymentCanceled(error)) return
     uni.showToast({ title: error?.message || '支付失败，请稍后重试', icon: 'none' })
   }
 }
@@ -292,21 +294,21 @@ async function handleDeliveryComplete() {
 </script>
 
 <style scoped>
-.container { padding: 10px; }
+.container { min-height: 100vh; padding: 10px; box-sizing: border-box; background: #f4f7f2; }
 .section { background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
 .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
 .address-row { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-size: 14px; }
 .address-text { flex: 1; text-align: right; color: #333; line-height: 1.5; }
 .label { color: #999; }
 .price { color: #f56c6c; font-weight: bold; }
-.status { color: #409EFF; font-weight: bold; }
+.status { color: #2f8a5a; font-weight: bold; }
 .section-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; display: block; }
 .item-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-.flow-item { padding: 4px 0; border-left: 2px solid #409EFF; padding-left: 10px; margin-bottom: 8px; }
+.flow-item { padding: 4px 0; border-left: 2px solid #2f8a5a; padding-left: 10px; margin-bottom: 8px; }
 .flow-action { font-size: 13px; font-weight: bold; display: block; }
 .flow-time { font-size: 11px; color: #999; }
 .action-bar { margin-top: 20px; }
-.action-btn { background: #409EFF; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
+.action-btn { background: #2f8a5a; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
 .action-btn.primary { background: #67C23A; }
 .action-btn.danger { background: #f56c6c; }
 .action-btn.disabled { background: #c0c4cc; color: #fff; }
