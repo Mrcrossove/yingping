@@ -2,7 +2,10 @@
   "pages": [
     {
       "path": "pages/index/index",
-      "style": { "navigationBarTitleText": "栀致饮品" }
+      "style": {
+        "navigationBarTitleText": "栀致饮品",
+        "enablePullDownRefresh": true
+      }
     },
     {
       "path": "pages/home/index",

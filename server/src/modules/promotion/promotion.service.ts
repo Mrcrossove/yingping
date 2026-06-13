@@ -1,9 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 
 @Injectable()
 export class PromotionService {
+  private readonly logger = new Logger(PromotionService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async generateCode(promoterId: number) {
@@ -93,22 +95,71 @@ export class PromotionService {
       return { code: code.code, qrcode: null, message: '请配置微信 AppID 和 Secret' };
     }
 
+    const envVersion = this.getWxacodeEnvVersion();
+    const checkPath = process.env.WX_WXACODE_CHECK_PATH !== 'false';
+    const page = process.env.WX_WXACODE_PAGE || 'pages/index/index';
+
     try {
       const tokenRes = await axios.get('https://api.weixin.qq.com/cgi-bin/token', {
         params: { grant_type: 'client_credential', appid: appId, secret },
       });
+      if (tokenRes.data?.errcode || !tokenRes.data?.access_token) {
+        const message = this.formatWechatError('获取微信 access_token 失败', tokenRes.data);
+        this.logger.warn(message);
+        return { code: code.code, qrcode: null, message };
+      }
       const accessToken = tokenRes.data.access_token;
 
       const qrRes = await axios.post(
         `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`,
-        { scene: code.code, page: 'pages/index/index', width: 280 },
+        {
+          scene: code.code,
+          page,
+          width: 280,
+          env_version: envVersion,
+          check_path: checkPath,
+        },
         { responseType: 'arraybuffer' },
       );
+      const contentType = String(qrRes.headers?.['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const wechatError = this.parseWechatBuffer(qrRes.data);
+        const message = this.formatWechatError('微信小程序码生成失败', wechatError);
+        this.logger.warn(message);
+        return { code: code.code, qrcode: null, message };
+      }
       const base64 = Buffer.from(qrRes.data).toString('base64');
       return { code: code.code, qrcode: `data:image/png;base64,${base64}` };
-    } catch {
-      return { code: code.code, qrcode: null, message: '二维码生成失败，已显示文本码' };
+    } catch (error: any) {
+      const message = error?.response?.data
+        ? this.formatWechatError('微信小程序码生成失败', this.parseWechatBuffer(error.response.data))
+        : '微信小程序码生成失败，请检查 AppID/Secret、发布版本和服务器网络';
+      this.logger.warn(`${message}${error?.message ? `: ${error.message}` : ''}`);
+      return { code: code.code, qrcode: null, message };
     }
+  }
+
+  private getWxacodeEnvVersion(): 'release' | 'trial' | 'develop' {
+    const value = process.env.WX_WXACODE_ENV_VERSION || 'release';
+    if (['release', 'trial', 'develop'].includes(value)) return value as 'release' | 'trial' | 'develop';
+    this.logger.warn(`WX_WXACODE_ENV_VERSION 配置无效：${value}，已回退到 release`);
+    return 'release';
+  }
+
+  private parseWechatBuffer(data: any) {
+    try {
+      const text = Buffer.isBuffer(data) ? data.toString('utf8') : Buffer.from(data).toString('utf8');
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+
+  private formatWechatError(prefix: string, data: any) {
+    if (!data) return prefix;
+    const errcode = data.errcode ?? 'unknown';
+    const errmsg = data.errmsg || '未知错误';
+    return `${prefix}：${errmsg}（errcode: ${errcode}）`;
   }
 
   async getCommissionDetails(promoterId: number, query: { page?: number; pageSize?: number }) {

@@ -53,7 +53,7 @@
     </scroll-view>
 
     <!-- 商品列表 — B2B批发样式 -->
-    <scroll-view scroll-y class="product-list" refresher-enabled @refresherrefresh="onRefresh">
+    <view class="product-list">
       <view v-for="p in filteredProducts" :key="p.id" class="product-card" @click="goProductDetail(p.id)">
         <!-- 商品图 -->
         <view class="p-image">
@@ -89,7 +89,7 @@
       <view v-if="!filteredProducts.length" class="empty-products">
         <text>{{ loadError || '暂无商品' }}</text>
       </view>
-    </scroll-view>
+    </view>
 
     <!-- 底部悬浮购物车 -->
     <view class="float-cart" v-if="cartTotalCount > 0" @click="goCart">
@@ -107,7 +107,7 @@ import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { bannerApi, categoryApi, productApi } from '@/api/index'
 import { API_BASE_URL } from '@/config'
-import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 const cartStore = useCartStore()
 const userStore = useUserStore()
@@ -278,6 +278,8 @@ onMounted(() => {
   fetchProducts()
 })
 
+onPullDownRefresh(onRefresh)
+
 onShareAppMessage(() => ({
   title: '栀致饮品订货',
   path: `/pages/index/index${shareQuery() ? `?${shareQuery()}` : ''}`,
@@ -290,7 +292,7 @@ onShareTimeline(() => ({
 </script>
 
 <style scoped>
-.page { height: 100vh; display: flex; flex-direction: column; background: #f4f7f2; }
+.page { min-height: 100vh; background: #f4f7f2; }
 .header-bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; background: #fffdf8; color: #1f3527; flex-shrink: 0; border-bottom: 1px solid #e4eadf; }
 .brand-mark { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 800; background: linear-gradient(145deg, #2f8a5a, #d89a42); box-shadow: 0 8px 20px rgba(77,111,74,0.18); flex-shrink: 0; }
 .merchant-info { display: flex; flex-direction: column; gap: 2px; }
@@ -314,7 +316,7 @@ onShareTimeline(() => ({
 .category-name { white-space: nowrap; }
 .category-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #eef1f5; color: #7b8494; font-size: 10px; line-height: 16px; text-align: center; box-sizing: border-box; }
 .category-tag.active .category-count { background: rgba(255,255,255,0.24); color: #fff; }
-.product-list { flex: 1; padding: 0 12px 8px; box-sizing: border-box; }
+.product-list { padding: 0 12px 96px; box-sizing: border-box; }
 .product-card { background: #fff; border-radius: 12px; margin-bottom: 10px; overflow: hidden; display: flex; align-items: stretch; box-shadow: 0 0 0 1px #e8edf4 inset; }
 .p-image { width: 92px; min-height: 132px; background: #f5f7fa; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .product-image { width: 100%; height: 100%; display: block; }
