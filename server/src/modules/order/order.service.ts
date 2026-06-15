@@ -4,6 +4,7 @@ import { OrderSettlementType, OrderStatus, Role } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 import { NotificationService } from '../notification/notification.service';
+import { PaymentService } from '../payment/payment.service';
 
 @Injectable()
 export class OrderService {
@@ -12,6 +13,8 @@ export class OrderService {
     @Inject(forwardRef(() => WebsocketGateway))
     private wsGateway: WebsocketGateway,
     private notificationService: NotificationService,
+    @Inject(forwardRef(() => PaymentService))
+    private paymentService: PaymentService,
   ) {}
 
   async create(dto: {
@@ -299,12 +302,16 @@ export class OrderService {
   }
 
   async cancel(orderId: number, user: { id: number; role: Role }) {
+    const syncedPayment = await this.paymentService.syncPaymentStatus(orderId, user);
     const order = await this.findOne(orderId);
     if (!this.canAccessOrder(order, user)) throw new ForbiddenException('无权取消该订单');
     if (order.status === 'delivered' || order.status === 'completed') throw new BadRequestException('已完成的订单无法取消');
-    const paymentStatus = order.payment?.status;
+    const paymentStatus = syncedPayment?.status || order.payment?.status;
     if (paymentStatus && ['paid', 'refunding', 'refunded'].includes(paymentStatus)) {
-      throw new BadRequestException('已支付订单不能直接取消，请申请退款');
+      if (paymentStatus === 'paid') {
+        return this.paymentService.refund(orderId, user);
+      }
+      throw new BadRequestException('订单正在退款或已退款，请勿重复操作');
     }
     if (user.role === 'merchant' && order.status !== 'pending') throw new BadRequestException('订单已接单，无法自行取消');
 

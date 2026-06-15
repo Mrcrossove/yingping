@@ -158,6 +158,32 @@ export class PaymentService {
     return { code: 'SUCCESS', message: '成功' };
   }
 
+  async syncPaymentStatus(orderId: number, user: { id: number; role: Role }) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { orderId },
+      include: { order: true },
+    });
+    if (!payment) return null;
+    this.assertCanAccessOrder(payment.order, user);
+    if (!['pending', 'failed'].includes(payment.status)) return payment;
+
+    const result = await this.queryWechatTransaction(payment.orderNo);
+    if (!result) return payment;
+
+    if (result.trade_state === 'SUCCESS') {
+      return this.markPaidPayment(payment.id, result.transaction_id);
+    }
+
+    if (['CLOSED', 'REVOKED', 'PAYERROR'].includes(result.trade_state)) {
+      return this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'failed' },
+      });
+    }
+
+    return payment;
+  }
+
   async getPaymentByOrder(orderId: number, user: { id: number; role: Role }) {
     const payment = await this.prisma.payment.findUnique({
       where: { orderId },
@@ -185,18 +211,31 @@ export class PaymentService {
   }
 
   async refund(orderId: number, user?: { id: number; role: Role }) {
-    const payment = await this.prisma.payment.findUnique({
+    let payment = await this.prisma.payment.findUnique({
       where: { orderId },
       include: { order: { include: { items: true } } },
     });
     if (!payment) throw new BadRequestException('支付记录不存在');
-    if (payment.status !== 'paid') throw new BadRequestException('只能退款已支付的订单');
     if (user) {
       this.assertCanAccessOrder(payment.order, user);
-      if (user.role === 'merchant' && payment.order.status !== 'pending') {
+      if (user.role === 'merchant' && !this.canMerchantSelfRefund(payment.order)) {
         throw new BadRequestException('订单已接单，请联系商家处理退款');
       }
     }
+
+    if (['pending', 'failed'].includes(payment.status)) {
+      const result = await this.queryWechatTransaction(payment.orderNo);
+      if (result?.trade_state === 'SUCCESS') {
+        await this.markPaidPayment(payment.id, result.transaction_id);
+        const refreshed = await this.prisma.payment.findUnique({
+          where: { id: payment.id },
+          include: { order: { include: { items: true } } },
+        });
+        if (refreshed) payment = refreshed;
+      }
+    }
+
+    if (payment.status !== 'paid') throw new BadRequestException('只能退款已支付的订单');
 
     const wxConfig = this.getWxPayConfig();
     const totalFee = Math.round(Number(payment.amount) * 100);
@@ -301,6 +340,53 @@ export class PaymentService {
     throw new ForbiddenException('无权访问该支付订单');
   }
 
+  private canMerchantSelfRefund(order: any) {
+    return ['pending', 'made', 'cancelled'].includes(order.status) && !order.deliveryId;
+  }
+
+  private async markPaidPayment(paymentId: number, transactionId?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findUnique({
+        where: { id: paymentId },
+        include: { order: true },
+      });
+      if (!payment) throw new BadRequestException('支付记录不存在');
+      if (payment.status === 'paid') return payment;
+
+      const updated = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'paid',
+          paidAt: payment.paidAt || new Date(),
+          ...(transactionId ? { transactionId } : {}),
+        },
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          settlementStatus: 'paid',
+          ...(payment.order.status === 'pending'
+            ? {
+                status: 'made',
+                flows: {
+                  create: {
+                    fromRole: 'merchant',
+                    toRole: 'admin',
+                    operatorId: payment.userId,
+                    action: '系统确认订单',
+                    remark: '微信支付成功后自动进入待配送',
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+
+      return updated;
+    });
+  }
+
   private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string; targetPath?: string }) {
     try { await this.notificationService.createForRoles(roles, data); } catch {}
   }
@@ -323,6 +409,26 @@ export class PaymentService {
     };
   }
 
+  private async queryWechatTransaction(orderNo: string) {
+    const wxConfig = this.getWxPayConfig();
+    const path = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}`;
+    const urlPath = `${path}?mchid=${encodeURIComponent(wxConfig.mchId)}`;
+    try {
+      const response = await axios.get(`https://api.mch.weixin.qq.com${urlPath}`, {
+        headers: {
+          Authorization: this.buildWechatAuthorization('GET', urlPath, undefined, wxConfig),
+          Accept: 'application/json',
+          'User-Agent': 'beverage-order-server/1.0',
+        },
+        timeout: 15000,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) return null;
+      throw new BadRequestException('微信支付状态确认失败，请稍后重试');
+    }
+  }
+
   private getWechatpayPublicKey() {
     const publicKeyPath = process.env.WX_PLATFORM_CERT_PATH || process.env.WX_PAY_PUBLIC_KEY_PATH;
     if (!publicKeyPath) throw new BadRequestException('微信支付平台证书公钥未配置');
@@ -332,7 +438,7 @@ export class PaymentService {
   private buildWechatAuthorization(method: string, urlPath: string, body: any, config: ReturnType<PaymentService['getWxPayConfig']>) {
     const timestamp = String(Math.floor(Date.now() / 1000));
     const nonce = crypto.randomUUID().replace(/-/g, '');
-    const bodyText = JSON.stringify(body);
+    const bodyText = body ? JSON.stringify(body) : '';
     const signature = this.signWithPrivateKey(`${method}\n${urlPath}\n${timestamp}\n${nonce}\n${bodyText}\n`, config.privateKey);
     return `WECHATPAY2-SHA256-RSA2048 mchid="${config.mchId}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${config.serialNo}"`;
   }

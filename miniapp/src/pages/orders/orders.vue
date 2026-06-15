@@ -194,7 +194,7 @@ function canCancel(order: any) {
 
 function canRefund(order: any) {
   if (order.settlementType === 'monthly') return false
-  return order.status === 'pending' && order.paymentStatus === 'paid'
+  return ['pending', 'made'].includes(order.status) && order.paymentStatus === 'paid'
 }
 
 function isCompletedOrder(order: any) {
