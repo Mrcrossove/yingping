@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { canAccessRoute, getHomePath, getUserRole } from '@/utils/access'
+import { canAccessRoute, getHomePath, getUserRole, isSupportedRole } from '@/utils/access'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -127,6 +127,10 @@ router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
   const role = getUserRole()
   if (to.path !== '/login' && !token) {
+    next('/login')
+  } else if (token && !isSupportedRole(role)) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     next('/login')
   } else if (to.path === '/login' && token) {
     next(getHomePath(role))

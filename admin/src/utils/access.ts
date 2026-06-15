@@ -6,6 +6,8 @@ export const ROLE_HOME: Record<string, string> = {
   merchant: '/403',
 }
 
+export const ACTIVE_ROLES = ['boss', 'admin', 'delivery', 'promoter', 'merchant'] as const
+
 export const ROUTE_ROLES: Record<string, string[]> = {
   Dashboard: ['boss', 'admin'],
   Orders: ['boss', 'admin', 'delivery'],
@@ -67,7 +69,7 @@ export function getHomePath(role: string) {
     const entry = Object.entries(ROUTE_PERMISSIONS).find(([, permission]) => permissions.includes(permission))
     return entry ? `/${entry[0] === 'OrderDetail' ? 'orders' : routeNameToPath(entry[0])}` : '/403'
   }
-  return ROLE_HOME[role] || '/orders'
+  return ROLE_HOME[role] || '/403'
 }
 
 function routeNameToPath(name: string) {
@@ -102,6 +104,10 @@ export function canAccessRoute(routeName: unknown, role: string) {
     return !permission || permissions.includes(permission)
   }
   return true
+}
+
+export function isSupportedRole(role: string) {
+  return ACTIVE_ROLES.includes(role as (typeof ACTIVE_ROLES)[number])
 }
 
 export function hasPermission(permission: string) {
