@@ -86,7 +86,7 @@ const currentRejectId = ref(0)
 const selectedRows = ref<any[]>([])
 
 const statusMap: Record<string, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝', paid: '已打款' }
-const roleMap: Record<string, string> = { salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员' }
+const roleMap: Record<string, string> = { delivery: '配送员', promoter: '推广员' }
 function statusType(s: string) { const m: Record<string, string> = { pending: 'warning', approved: 'success', rejected: 'danger' }; return m[s] || '' }
 
 async function fetchList() {

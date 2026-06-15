@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export const userApi = {
   list: (params?: any) => request.get('/users', { params }),
-  dispatchStaff: (role: 'maker' | 'delivery') => request.get('/users/dispatch-staff', { params: { role } }),
+  dispatchStaff: (role: 'delivery') => request.get('/users/dispatch-staff', { params: { role } }),
   merchants: (params?: any) => request.get('/users/merchants', { params }),
   earningOptions: (params?: any) => request.get('/users/earning-options', { params }),
   merchantDashboard: (params?: any) => request.get('/users/merchant-dashboard', { params }),

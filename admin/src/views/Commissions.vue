@@ -78,8 +78,6 @@ import { ElMessage } from 'element-plus'
 import { commissionApi, categoryApi } from '@/api/index'
 
 const roles = [
-  { key: 'salesperson', label: '业务员' },
-  { key: 'maker', label: '制作员' },
   { key: 'delivery', label: '配送员' },
   { key: 'promoter', label: '推广员' },
 ]

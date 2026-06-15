@@ -18,7 +18,7 @@ export const productApi = {
 }
 
 export const userApi = {
-  dispatchStaff: (role: 'maker' | 'delivery') => get('/users/dispatch-staff', { role }),
+  dispatchStaff: (role: 'delivery') => get('/users/dispatch-staff', { role }),
   merchants: (params?: any) => get('/users/merchants', params),
   myMerchantProfile: () => get('/users/me/merchant-profile'),
   updateMyMerchantProfile: (data: any) => put('/users/me/merchant-profile', data),
@@ -32,15 +32,10 @@ export const orderApi = {
   create: (data: any) => post('/orders', data),
   list: (params?: any) => get('/orders', params),
   detail: (id: number) => get(`/orders/${id}`),
-  accept: (id: number) => post(`/orders/${id}/accept`),
-  dispatchToMaker: (id: number, makerId: number) => post(`/orders/${id}/dispatch-maker`, { makerId }),
   dispatchToDelivery: (id: number, deliveryId: number) => post(`/orders/${id}/dispatch-delivery`, { deliveryId }),
-  makerStart: (id: number) => post(`/orders/${id}/maker-start`),
-  makerComplete: (id: number) => post(`/orders/${id}/maker-complete`),
   deliveryStart: (id: number) => post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => post(`/orders/${id}/delivery-complete`),
   cancel: (id: number) => post(`/orders/${id}/cancel`),
-  manualCreate: (data: any) => post('/orders/manual', data),
 }
 
 export const addressApi = {

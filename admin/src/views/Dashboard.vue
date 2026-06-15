@@ -96,7 +96,7 @@ const earningsOption = computed(() => ({
 }))
 
 function roleLabel(r: string) {
-  const m: Record<string, string> = { salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员' }
+  const m: Record<string, string> = { delivery: '配送员', promoter: '推广员' }
   return m[r] || r
 }
 

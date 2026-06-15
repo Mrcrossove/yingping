@@ -74,7 +74,7 @@ export class OrderService {
           stockDeducted,
           settlementType,
           settlementStatus: settlementType === 'monthly' ? 'monthly_pending' : 'unpaid',
-          status: settlementType === 'monthly' ? 'accepted' : 'pending',
+          status: settlementType === 'monthly' ? 'made' : 'pending',
           items: {
             create: items,
           },
@@ -83,21 +83,21 @@ export class OrderService {
               ? [
                   {
                     fromRole: 'merchant',
-                    toRole: 'salesperson',
+                    toRole: 'admin',
                     operatorId: merchantId,
                     action: '商户月结下单',
                   },
                   {
                     fromRole: 'merchant',
-                    toRole: 'salesperson',
+                    toRole: 'admin',
                     operatorId: merchantId,
                     action: '系统确认订单',
-                    remark: '月结订单创建后自动接单',
+                    remark: '月结订单创建后自动进入待配送',
                   },
                 ]
               : {
                   fromRole: 'merchant',
-                  toRole: 'salesperson',
+                  toRole: 'admin',
                   operatorId: merchantId,
                   action: '商户下单',
                 },
@@ -107,8 +107,8 @@ export class OrderService {
       });
     });
 
-    await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
-      title: settlementType === 'monthly' ? '有新的月结订单待派单' : '有新的订单待接单',
+    await this.safeNotifyRoles(['boss', 'admin'], {
+      title: settlementType === 'monthly' ? '有新的月结订单待配送' : '有新的订单待支付',
       content: `订单 ${order.orderNo} 金额 ¥${Number(order.totalAmount).toFixed(2)}`,
       type: 'order',
       targetPath: `/orders/${order.id}`,
@@ -119,7 +119,7 @@ export class OrderService {
 
   async findAll(query: {
     page?: number; pageSize?: number; status?: OrderStatus;
-    merchantId?: number; salespersonId?: number; salespersonIdOrUnassigned?: number; makerId?: number; deliveryId?: number;
+    merchantId?: number; salespersonId?: number; makerId?: number; deliveryId?: number;
     keyword?: string; startDate?: string; endDate?: string; settlementType?: string; settlementStatus?: string;
   }) {
     const { page = 1, pageSize = 20 } = query;
@@ -127,13 +127,6 @@ export class OrderService {
     if (query.status) where.status = query.status;
     if (query.merchantId) where.merchantId = +query.merchantId;
     if (query.salespersonId) where.salespersonId = +query.salespersonId;
-    if (query.salespersonIdOrUnassigned) {
-      where.OR = [
-        { salespersonId: +query.salespersonIdOrUnassigned },
-        { status: 'pending' },
-        { status: 'accepted', salespersonId: null },
-      ];
-    }
     if (query.makerId) where.makerId = +query.makerId;
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
     if (query.settlementType) where.settlementType = query.settlementType;
@@ -197,168 +190,9 @@ export class OrderService {
     return order;
   }
 
-  async acceptOrder(orderId: number, salespersonId: number) {
-    const order = await this.findOne(orderId);
-    if (order.status !== 'pending') throw new BadRequestException('订单状态不正确');
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        salespersonId,
-        status: 'accepted',
-        flows: {
-          create: {
-            fromRole: 'merchant',
-            toRole: 'salesperson',
-            operatorId: salespersonId,
-            action: '业务员接单',
-          },
-        },
-      },
-    });
-    await this.safeNotifyUsers([order.merchantId], {
-      title: '订单已接单',
-      content: `订单 ${order.orderNo} 已由业务员接单`,
-      type: 'order',
-      targetPath: `/orders/${order.id}`,
-    });
-    return updated;
-  }
-
-  async dispatchToMaker(orderId: number, makerId: number, operator: { id: number; role: Role }) {
-    const order = await this.findOne(orderId);
-    if (order.status !== 'accepted') throw new BadRequestException('订单状态不正确，当前只能从已接单状态派单给制作员');
-    const operatorId = operator.id;
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        ...this.buildSalespersonAssignment(order, operator),
-        makerId,
-        status: 'making',
-        flows: {
-          create: {
-            fromRole: 'salesperson',
-            toRole: 'maker',
-            operatorId,
-            action: '派单给制作员',
-          },
-        },
-      },
-    });
-    await this.safeNotifyUsers([makerId], {
-      title: '你有新的制作任务',
-      content: `订单 ${order.orderNo} 已派单给你制作`,
-      type: 'order',
-      targetPath: `/orders/${order.id}`,
-    });
-    return updated;
-  }
-
-
-  async dispatchBoth(orderId: number, makerId: number, deliveryId: number, operator: { id: number; role: Role }) {
-    const order = await this.findOne(orderId);
-    if (order.status !== 'accepted') throw new BadRequestException('订单状态不正确');
-    const operatorId = operator.id;
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        ...this.buildSalespersonAssignment(order, operator),
-        makerId,
-        deliveryId,
-        status: 'making',
-        flows: {
-          create: [
-            {
-              fromRole: 'salesperson',
-              toRole: 'maker',
-              operatorId,
-              action: '派单给制作员',
-            },
-            {
-              fromRole: 'salesperson',
-              toRole: 'delivery',
-              operatorId,
-              action: '派单给配送员',
-            },
-          ],
-        },
-      },
-    });
-
-    this.wsGateway.notifyNewTask(makerId, { orderId, type: 'making' });
-    this.wsGateway.notifyNewTask(deliveryId, { orderId, type: 'waiting' });
-    await this.safeNotifyUsers([makerId, deliveryId], {
-      title: '你有新的订单任务',
-      content: `订单 ${order.orderNo} 已派单，请及时处理`,
-      type: 'order',
-      targetPath: `/orders/${order.id}`,
-    });
-
-    return updated;
-  }
-
-
-  async makerStartMaking(orderId: number, makerId: number) {
-    const order = await this.findOne(orderId);
-    if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
-    if (order.makerId !== makerId) throw new ForbiddenException('无权操作该制作任务');
-    if (order.flows?.some((flow: any) => flow.action === '开始制作')) return order;
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        flows: {
-          create: {
-            fromRole: 'maker',
-            toRole: 'maker',
-            operatorId: makerId,
-            action: '开始制作',
-          },
-        },
-      },
-    });
-
-    this.wsGateway.notifyOrderStatusChange(orderId, 'making', '制作员已开始制作');
-
-    return updated;
-  }
-
-  async makerComplete(orderId: number, makerId: number) {
-    const order = await this.findOne(orderId);
-    if (order.status !== 'making') throw new BadRequestException('订单状态不正确');
-    if (order.makerId !== makerId) throw new ForbiddenException('无权操作该制作任务');
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'made',
-        flows: {
-          create: {
-            fromRole: 'maker',
-            toRole: 'salesperson',
-            operatorId: makerId,
-            action: '制作完成',
-          },
-        },
-      },
-    });
-
-    this.wsGateway.notifyOrderStatusChange(orderId, 'made', '制作已完成，等待配送');
-    await this.safeNotifyUsers([order.salespersonId || 0, order.deliveryId || 0], {
-      title: '订单制作完成',
-      content: `订单 ${order.orderNo} 已制作完成`,
-      type: 'order',
-      targetPath: `/orders/${order.id}`,
-    });
-    return updated;
-  }
-
-
   async deliveryStartDelivering(orderId: number, deliveryId: number) {
     const order = await this.findOne(orderId);
-    if (order.status !== 'made') throw new BadRequestException('订单状态不正确，请等待制作完成');
+    if (!['making', 'made'].includes(order.status)) throw new BadRequestException('订单状态不正确，请等待派单配送');
     if (order.deliveryId !== deliveryId) throw new ForbiddenException('无权操作该配送任务');
     if (order.flows?.some((flow: any) => flow.action === '开始配送')) return order;
 
@@ -384,17 +218,17 @@ export class OrderService {
 
   async dispatchToDelivery(orderId: number, deliveryId: number, operator: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
-    if (order.status !== 'made') throw new BadRequestException('订单状态不正确，需制作完成后才能派单给配送员');
+    if (!['accepted', 'making', 'made'].includes(order.status)) throw new BadRequestException('订单状态不正确，当前只能派发待配送订单');
     const operatorId = operator.id;
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
-        ...this.buildSalespersonAssignment(order, operator),
         deliveryId,
+        status: 'made',
         flows: {
           create: {
-            fromRole: 'salesperson',
+            fromRole: operator.role,
             toRole: 'delivery',
             operatorId,
             action: '派单给配送员',
@@ -528,32 +362,11 @@ export class OrderService {
     });
   }
 
-  async manualCreate(dto: {
-    items: { productId: number; quantity: number }[];
-    note?: string;
-    merchantId: number;
-    receiverName?: string;
-    receiverPhone?: string;
-    receiverAddress?: string;
-    receiverLocationName?: string;
-    receiverLatitude?: number;
-    receiverLongitude?: number;
-    receiverAdcode?: string;
-  }, salespersonId: number) {
-    const merchant = await this.prisma.user.findUnique({ where: { id: +dto.merchantId } });
-    if (!merchant || merchant.role !== 'merchant' || merchant.status !== 1) {
-      throw new BadRequestException('商户不存在或不可下单');
-    }
-    const order = await this.create(dto, dto.merchantId);
-    await this.acceptOrder(order.id, salespersonId);
-    return this.findOne(order.id);
-  }
-
-  async batchDispatch(orderIds: number[], makerId: number, deliveryId: number, operator: { id: number; role: Role }) {
+  async batchDispatch(orderIds: number[], deliveryId: number, operator: { id: number; role: Role }) {
     const results: { id: number; success: boolean; message?: string }[] = [];
     for (const id of orderIds) {
       try {
-        const result = await this.dispatchBoth(id, makerId, deliveryId, operator);
+        const result = await this.dispatchToDelivery(id, deliveryId, operator);
         results.push({ id, success: true });
       } catch (e: any) {
         results.push({ id, success: false, message: e.message });
@@ -603,9 +416,7 @@ export class OrderService {
         if (amount.lessThanOrEqualTo(0)) continue;
 
         let userId = 0;
-        if (rule.role === 'salesperson') userId = order.salespersonId || 0;
-        else if (rule.role === 'maker') userId = order.makerId || 0;
-        else if (rule.role === 'delivery') userId = order.deliveryId || 0;
+        if (rule.role === 'delivery') userId = order.deliveryId || 0;
         else if (rule.role === 'promoter') {
           const binding = await this.prisma.merchantBinding.findUnique({ where: { merchantId: order.merchantId } });
           if (binding) userId = binding.promoterId;
@@ -689,20 +500,9 @@ export class OrderService {
     try { await this.notificationService.createForUsers(userIds, data); } catch {}
   }
 
-  private buildSalespersonAssignment(order: any, operator: { id: number; role: Role }) {
-    if (order.salespersonId || operator.role !== 'salesperson') return {};
-    return { salespersonId: operator.id };
-  }
-
   private canAccessOrder(order: any, user: { id: number; role: Role }) {
     if (user.role === 'boss' || user.role === 'admin') return true;
     if (user.role === 'merchant') return order.merchantId === user.id;
-    if (user.role === 'salesperson') {
-      return order.salespersonId === user.id
-        || order.status === 'pending'
-        || (order.status === 'accepted' && !order.salespersonId);
-    }
-    if (user.role === 'maker') return order.makerId === user.id;
     if (user.role === 'delivery') return order.deliveryId === user.id;
     return false;
   }

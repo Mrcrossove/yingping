@@ -28,7 +28,7 @@ export class SettingService {
       create: {
         key: CUSTOMER_SERVICE_PHONE_KEY,
         value,
-        description: '小程序订单联系业务员兜底客服电话',
+        description: '小程序订单联系客服兜底电话',
       },
     });
 
@@ -40,4 +40,3 @@ export class SettingService {
     return setting?.value || '';
   }
 }
-

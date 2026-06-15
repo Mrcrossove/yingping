@@ -1,8 +1,8 @@
 export const statusMap: Record<string, string> = {
-  pending: '待接单',
-  accepted: '已接单',
+  pending: '待支付',
+  accepted: '待配送',
   making: '制作中',
-  made: '已制作',
+  made: '待配送',
   delivering: '配送中',
   delivered: '已送达',
   completed: '已完成',

@@ -91,11 +91,15 @@
       </view>
     </view>
 
-    <!-- 底部悬浮购物车 -->
-    <view class="float-cart" v-if="cartTotalCount > 0" @click="goCart">
-      <view class="cart-badge">{{ cartTotalCount }}</view>
-      <text class="cart-label">查看购物车</text>
-      <text class="cart-amount">¥{{ cartTotal.toFixed(2) }}</text>
+    <!-- 底部已选商品汇总 -->
+    <view class="float-cart" v-if="selectedTotalCount > 0">
+      <view class="cart-badge">{{ selectedTotalCount }}</view>
+      <view class="selected-summary">
+        <text class="cart-label">已选商品总价</text>
+        <text class="selected-count">共{{ selectedItemCount }}种</text>
+      </view>
+      <text class="cart-amount">¥{{ selectedTotal.toFixed(2) }}</text>
+      <view class="batch-add-btn" @click.stop="addSelectedToCart">加入购物车</view>
     </view>
 
   </view>
@@ -113,7 +117,7 @@ const cartStore = useCartStore()
 const userStore = useUserStore()
 const keyword = ref('')
 const currentCategory = ref(0)
-const cart = ref<Record<number, number>>({})
+const selectedQuantities = ref<Record<number, number>>({})
 const banners = ref<any[]>([])
 const remoteCategories = ref<any[]>([])
 const remoteProducts = ref<Product[]>([])
@@ -151,32 +155,34 @@ const filteredProducts = computed(() => {
   return list
 })
 
-const cartTotalCount = computed(() => Object.values(cart.value).reduce((s, v) => s + v, 0))
-const cartTotal = computed(() => {
+const selectedItemCount = computed(() => Object.keys(selectedQuantities.value).length)
+const selectedTotalCount = computed(() => Object.values(selectedQuantities.value).reduce((s, v) => s + v, 0))
+const selectedTotal = computed(() => {
   let total = 0
-  for (const [id, qty] of Object.entries(cart.value)) {
+  for (const [id, qty] of Object.entries(selectedQuantities.value)) {
     const p = remoteProducts.value.find(x => x.id === +id)
-    if (p) {
-      const tier = [...p.tierPrices].reverse().find(t => qty >= t.minQty)
-      total += (tier?.price || p.price) * qty
-    }
+    if (p) total += getEffectivePrice(p, qty) * qty
   }
   return total
 })
 
-function getQty(id: number) { return cart.value[id] || 0 }
+function getQty(id: number) { return selectedQuantities.value[id] || 0 }
 function changeQty(id: number, delta: number) {
   const cur = getQty(id)
   const next = Math.max(0, cur + delta)
-  if (next === 0) delete cart.value[id]
-  else cart.value[id] = next
-  cart.value = { ...cart.value }
+  if (next === 0) delete selectedQuantities.value[id]
+  else selectedQuantities.value[id] = next
+  selectedQuantities.value = { ...selectedQuantities.value }
 }
 function onQtyInput(e: any, id: number) {
   const v = parseInt(e.detail.value) || 0
-  if (v <= 0) delete cart.value[id]
-  else cart.value[id] = v
-  cart.value = { ...cart.value }
+  if (v <= 0) delete selectedQuantities.value[id]
+  else selectedQuantities.value[id] = v
+  selectedQuantities.value = { ...selectedQuantities.value }
+}
+function getEffectivePrice(p: Product, qty: number) {
+  const tier = [...p.tierPrices].reverse().find(t => qty >= t.minQty)
+  return tier?.price || p.price
 }
 function addToCart(p: Product) {
   const qty = getQty(p.id)
@@ -187,14 +193,42 @@ function addToCart(p: Product) {
   cartStore.addItem({
     productId: p.id,
     name: p.name,
-    price: p.price,
+    price: getEffectivePrice(p, qty),
     image: p.image,
     quantity: qty,
     checked: true,
   })
-  delete cart.value[p.id]
-  cart.value = { ...cart.value }
+  delete selectedQuantities.value[p.id]
+  selectedQuantities.value = { ...selectedQuantities.value }
   uni.showToast({ title: `已加入 ${qty}${p.unit} ${p.name}`, icon: 'success' })
+}
+function addSelectedToCart() {
+  const selectedProducts = Object.entries(selectedQuantities.value)
+    .map(([id, qty]) => {
+      const product = remoteProducts.value.find(p => p.id === +id)
+      return product ? { product, qty } : null
+    })
+    .filter(Boolean) as { product: Product; qty: number }[]
+  if (!selectedProducts.length) return
+
+  const invalid = selectedProducts.find(({ product, qty }) => qty < product.minOrderQty)
+  if (invalid) {
+    uni.showToast({ title: `${invalid.product.name}${invalid.product.minOrderQty}${invalid.product.unit}起批`, icon: 'none' })
+    return
+  }
+
+  selectedProducts.forEach(({ product, qty }) => {
+    cartStore.addItem({
+      productId: product.id,
+      name: product.name,
+      price: getEffectivePrice(product, qty),
+      image: product.image,
+      quantity: qty,
+      checked: true,
+    })
+  })
+  selectedQuantities.value = {}
+  uni.showToast({ title: '已加入购物车', icon: 'success' })
 }
 function switchCategory(id: number) { currentCategory.value = id }
 function filterProducts() {}
@@ -337,10 +371,13 @@ onShareTimeline(() => ({
 .step-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #334155; background: #f8fafc; }
 .step-input { width: 40px; height: 28px; text-align: center; font-size: 13px; border-left: 1px solid #d9e2ee; border-right: 1px solid #d9e2ee; }
 .add-cart-btn { background: #2f8a5a; color: #fff; font-size: 12px; padding: 7px 11px; border-radius: 8px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-.float-cart { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #1f3527; border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; color: #fff; box-shadow: 0 12px 30px rgba(31,53,39,0.22); }
-.cart-badge { background: #d89a42; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 10px; }
-.cart-label { flex: 1; font-size: 15px; font-weight: 600; }
-.cart-amount { font-size: 17px; font-weight: 700; }
+.float-cart { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #1f3527; border-radius: 14px; padding: 11px 12px; display: flex; align-items: center; color: #fff; box-shadow: 0 12px 30px rgba(31,53,39,0.22); gap: 10px; box-sizing: border-box; z-index: 20; }
+.cart-badge { background: #d89a42; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.selected-summary { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-label { font-size: 14px; line-height: 18px; font-weight: 700; }
+.selected-count { font-size: 10px; line-height: 14px; color: rgba(255,255,255,0.72); }
+.cart-amount { font-size: 17px; font-weight: 800; white-space: nowrap; }
+.batch-add-btn { height: 36px; padding: 0 12px; border-radius: 10px; background: #2f8a5a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
 .empty-products { text-align: center; color: #999; padding: 60px 0; font-size: 14px; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: flex-end; }
 .role-sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; padding: 20px; }

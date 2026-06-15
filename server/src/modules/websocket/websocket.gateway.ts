@@ -67,7 +67,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   }
 
   notifyNewOrder(order: any) {
-    this.server.to('role:salesperson').to('role:admin').to('role:boss').emit('new-order', order);
+    this.server.to('role:admin').to('role:boss').emit('new-order', order);
   }
 
   notifyOrderStatusChange(orderId: number, status: string, action: string) {

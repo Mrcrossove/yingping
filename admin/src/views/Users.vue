@@ -58,8 +58,6 @@
         <el-form-item label="角色">
           <el-select v-model="userForm.role" style="width: 100%" :disabled="!!userForm.id">
             <el-option label="管理员" value="admin" />
-            <el-option label="业务员" value="salesperson" />
-            <el-option label="制作员" value="maker" />
             <el-option label="配送员" value="delivery" />
             <el-option label="推广员" value="promoter" />
           </el-select>
@@ -128,7 +126,7 @@ const pageSize = ref(20)
 const keyword = ref('')
 const filterRole = ref('')
 const userDialogVisible = ref(false)
-const userForm = ref<any>({ username: '', password: '', realName: '', role: 'salesperson', phone: '', status: 1 })
+const userForm = ref<any>({ username: '', password: '', realName: '', role: 'promoter', phone: '', status: 1 })
 const permissionDialogVisible = ref(false)
 const permissionLoading = ref(false)
 const currentAdminId = ref(0)
@@ -138,12 +136,12 @@ const resetPwdVisible = ref(false)
 const resetPwdForm = ref({ userId: 0, password: '' })
 
 const roleMap: Record<string, string> = {
-  boss: '老板', admin: '管理员', salesperson: '业务员',
-  maker: '制作员', delivery: '配送员', promoter: '推广员',
+  boss: '老板', admin: '管理员',
+  delivery: '配送员', promoter: '推广员',
 }
 
 function roleTagType(role: string) {
-  const map: Record<string, string> = { boss: 'danger', admin: 'warning', salesperson: 'info', maker: '', delivery: 'success', promoter: 'info' }
+  const map: Record<string, string> = { boss: 'danger', admin: 'warning', delivery: 'success', promoter: 'info' }
   return map[role] || ''
 }
 
@@ -164,7 +162,7 @@ async function fetchUsers() {
 }
 
 function showUserDialog(row?: any) {
-  userForm.value = row ? { ...row, password: '' } : { username: '', password: '', realName: '', role: 'salesperson', phone: '', status: 1 }
+  userForm.value = row ? { ...row, password: '' } : { username: '', password: '', realName: '', role: 'promoter', phone: '', status: 1 }
   userDialogVisible.value = true
 }
 

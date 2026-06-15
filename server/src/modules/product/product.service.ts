@@ -15,7 +15,6 @@ type ProductPayload = {
   status?: unknown;
   stock?: unknown;
   minStock?: unknown;
-  makerRate?: unknown;
   deliveryRate?: unknown;
 };
 
@@ -98,7 +97,6 @@ export class ProductService {
     if (data.status !== undefined) result.status = this.parseStatus(data.status);
     if (data.stock !== undefined) result.stock = this.parseNonNegativeInt(data.stock, '库存不能小于 0');
     if (data.minStock !== undefined) result.minStock = this.parseNonNegativeInt(data.minStock, '最低库存不能小于 0');
-    if (data.makerRate !== undefined) result.makerRate = this.parseNullableNonNegativeNumber(data.makerRate, '制作提成不能小于 0');
     if (data.deliveryRate !== undefined) result.deliveryRate = this.parseNullableNonNegativeNumber(data.deliveryRate, '配送提成不能小于 0');
 
     return result;

@@ -31,7 +31,7 @@ export class PermissionService {
   async initDefaultPermissions() {
     const defaults = [
       { name: '订单管理', code: 'order:manage', description: '查看和管理订单' },
-      { name: '派单管理', code: 'order:dispatch', description: '派单给制作员和配送员' },
+      { name: '派单管理', code: 'order:dispatch', description: '派单给配送员' },
       { name: '员工管理', code: 'user:manage', description: '创建和管理员工' },
       { name: '商品管理', code: 'product:manage', description: '管理商品和分类' },
       { name: '权限管理', code: 'permission:manage', description: '分配管理员权限' },

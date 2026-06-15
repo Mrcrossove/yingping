@@ -144,8 +144,6 @@ const withdrawForm = reactive({
 })
 
 const roleMap: Record<string, string> = {
-  salesperson: '业务员',
-  maker: '制作员',
   delivery: '配送员',
   promoter: '推广员',
 }

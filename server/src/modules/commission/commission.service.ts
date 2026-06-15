@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CommissionType, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-const COMMISSION_ROLES: Role[] = ['salesperson', 'maker', 'delivery', 'promoter'];
+const COMMISSION_ROLES: Role[] = ['delivery', 'promoter'];
 const COMMISSION_TYPES: CommissionType[] = ['percentage', 'fixed'];
 
 @Injectable()

@@ -134,8 +134,8 @@ const lastKnownUnreadIds = ref<Set<number>>(new Set())
 let notificationTimer: number | undefined
 
 const roleMap: Record<string, string> = {
-  boss: '老板', admin: '管理员', salesperson: '业务员',
-  maker: '制作员', delivery: '配送员', promoter: '推广员', merchant: '商户',
+  boss: '老板', admin: '管理员',
+  delivery: '配送员', promoter: '推广员', merchant: '商户',
 }
 const roleLabel = computed(() => roleMap[userStore.role] || userStore.role)
 

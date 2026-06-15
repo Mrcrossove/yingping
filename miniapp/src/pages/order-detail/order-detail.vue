@@ -68,12 +68,7 @@
         <button v-if="isRefunding" class="action-btn disabled" disabled>退款中</button>
         <button v-if="isRefunded" class="action-btn disabled" disabled>已退款</button>
         <button v-if="canReorder" @click="handleReorder" class="action-btn">再次下单</button>
-        <button v-if="userStore.user?.role === 'salesperson' && order.status === 'pending'" @click="handleAccept" class="action-btn">接单</button>
-        <button v-if="canDispatchMaker" @click="handleDispatchMaker" class="action-btn primary">派单制作</button>
-        <button v-if="canDispatchDelivery" @click="handleDispatchDelivery" class="action-btn primary">派单配送</button>
-        <button v-if="userStore.user?.role === 'maker' && order.status === 'making'" @click="handleMakerStart" class="action-btn">开始制作</button>
-        <button v-if="userStore.user?.role === 'maker' && order.status === 'making'" @click="handleMakerComplete" class="action-btn primary">制作完成</button>
-        <button v-if="userStore.user?.role === 'delivery' && order.status === 'made'" @click="handleDeliveryStart" class="action-btn">去配送</button>
+        <button v-if="userStore.user?.role === 'delivery' && ['making', 'made'].includes(order.status)" @click="handleDeliveryStart" class="action-btn">去配送</button>
         <button v-if="userStore.user?.role === 'delivery' && order.status === 'delivering'" @click="handleDeliveryComplete" class="action-btn primary">确认送达</button>
       </view>
     </template>
@@ -83,7 +78,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { orderApi, paymentApi, reviewApi, userApi } from '@/api/index'
+import { orderApi, paymentApi, reviewApi } from '@/api/index'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { isPaymentCanceled, requestOrderPayment } from '@/utils/payment'
@@ -95,8 +90,8 @@ const reviews = ref<any[]>([])
 const reviewForm = ref({ rating: 5, content: '' })
 
 const statusMap: Record<string, string> = {
-  pending: '待接单', accepted: '已接单', making: '制作中',
-  made: '已制作', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
+  pending: '待支付', accepted: '待配送', making: '制作中',
+  made: '待配送', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
 }
 const paymentStatusMap: Record<string, string> = {
   pending: '待支付',
@@ -118,9 +113,7 @@ const canOperate = computed(() => {
   if (!order.value || !userStore.user) return false
   const role = userStore.user.role
   if (role === 'merchant' && ['pending', 'completed', 'delivered', 'cancelled'].includes(order.value.status)) return true
-  if (role === 'salesperson' && ['pending', 'accepted', 'made'].includes(order.value.status)) return true
-  if (role === 'maker' && (order.value.status === 'making')) return true
-  if (role === 'delivery' && (order.value.status === 'made' || order.value.status === 'delivering')) return true
+  if (role === 'delivery' && ['making', 'made', 'delivering'].includes(order.value.status)) return true
   return false
 })
 
@@ -140,8 +133,6 @@ const canPay = computed(() =>
   && ['', 'pending', 'failed'].includes(paymentStatus.value)
 )
 const canReorder = computed(() => userStore.user?.role === 'merchant' && ['completed', 'delivered'].includes(order.value?.status))
-const canDispatchMaker = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'accepted')
-const canDispatchDelivery = computed(() => userStore.user?.role === 'salesperson' && order.value?.status === 'made')
 const canReview = computed(() =>
   userStore.user?.role === 'merchant'
   && ['completed', 'delivered'].includes(order.value?.status)
@@ -166,44 +157,6 @@ async function fetchReviews(orderId: number) {
   } catch {
     reviews.value = []
   }
-}
-
-async function handleAccept() {
-  await orderApi.accept(order.value.id)
-  uni.showToast({ title: '接单成功', icon: 'success' })
-  await refreshOrder()
-}
-
-async function handleDispatchMaker() {
-  const maker = await selectDispatchStaff('maker')
-  if (!maker) return
-  await orderApi.dispatchToMaker(order.value.id, maker.id)
-  uni.showToast({ title: '派单成功', icon: 'success' })
-  await refreshOrder()
-}
-
-async function handleDispatchDelivery() {
-  const delivery = await selectDispatchStaff('delivery')
-  if (!delivery) return
-  await orderApi.dispatchToDelivery(order.value.id, delivery.id)
-  uni.showToast({ title: '派单成功', icon: 'success' })
-  await refreshOrder()
-}
-
-async function selectDispatchStaff(role: 'maker' | 'delivery') {
-  const label = role === 'maker' ? '制作员' : '配送员'
-  const list = await userApi.dispatchStaff(role)
-  if (!list.length) {
-    uni.showToast({ title: `暂无可用${label}`, icon: 'none' })
-    return null
-  }
-  return new Promise<any>((resolve) => {
-    uni.showActionSheet({
-      itemList: list.map((item: any) => item.phone ? `${item.realName} (${item.phone})` : item.realName),
-      success: (res: any) => resolve(list[res.tapIndex]),
-      fail: () => resolve(null),
-    })
-  })
 }
 
 async function handleCancel() {
@@ -266,18 +219,6 @@ async function handleReview() {
   uni.showToast({ title: '评价成功', icon: 'success' })
   reviewForm.value = { rating: 5, content: '' }
   await fetchReviews(order.value.id)
-}
-
-async function handleMakerStart() {
-  await orderApi.makerStart(order.value.id)
-  uni.showToast({ title: '开始制作', icon: 'success' })
-  await refreshOrder()
-}
-
-async function handleMakerComplete() {
-  await orderApi.makerComplete(order.value.id)
-  uni.showToast({ title: '制作完成', icon: 'success' })
-  await refreshOrder()
 }
 
 async function handleDeliveryStart() {

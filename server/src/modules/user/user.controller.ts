@@ -37,14 +37,14 @@ export class UserController {
   }
 
   @Get('dispatch-staff')
-  @Roles('boss', 'admin', 'salesperson')
+  @Roles('boss', 'admin')
   async getDispatchStaff(@Query('role') role: string) {
     const data = await this.userService.getDispatchStaff(role);
     return ApiResult.success(data);
   }
 
   @Get('merchants')
-  @Roles('boss', 'admin', 'salesperson')
+  @Roles('boss', 'admin')
   async getMerchants(@Query() query: any) {
     const data = await this.userService.getMerchants(query);
     return ApiResult.success(data);

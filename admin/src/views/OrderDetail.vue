@@ -10,8 +10,6 @@
           <el-tag :type="statusTagType(order.status)">{{ statusMap[order.status] }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="商户">{{ order.merchant?.realName }}</el-descriptions-item>
-        <el-descriptions-item label="业务员">{{ order.salesperson?.realName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="制作员">{{ order.maker?.realName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送员">{{ order.delivery?.realName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="金额">¥{{ Number(order.totalAmount).toFixed(2) }}</el-descriptions-item>
         <el-descriptions-item label="备注">{{ order.note || '-' }}</el-descriptions-item>
@@ -72,35 +70,11 @@
       </el-table>
 
       <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;" v-if="canOperate">
-        <template v-if="order.status === 'pending'">
-          <el-button type="primary" @click="handleAccept">确认接单</el-button>
-        </template>
-        <template v-if="order.status === 'accepted' && canDispatch">
-          <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <el-select v-model="makerId" placeholder="选择制作员" style="width: 160px;">
-                <el-option v-for="m in makers" :key="m.id" :label="m.realName" :value="m.id" />
-              </el-select>
-              <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
-                <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
-              </el-select>
-              <el-button type="primary" :disabled="!makerId || !deliveryId" @click="handleDispatchBoth">同时派单</el-button>
-            </div>
-            <div style="font-size: 12px; color: #999;">或单独操作：</div>
-            <div style="display: flex; gap: 8px;">
-              <el-button size="small" :disabled="!makerId" @click="handleDispatchMaker">仅派制作员</el-button>
-            </div>
-          </div>
-        </template>
-        <template v-if="order.status === 'made' && canDispatch">
+        <template v-if="['accepted', 'making', 'made'].includes(order.status) && canDispatch">
           <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
             <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
           </el-select>
           <el-button type="primary" :disabled="!deliveryId" @click="handleDispatchDelivery">派单给配送员</el-button>
-        </template>
-        <template v-if="canMake && order.status === 'making'">
-          <el-button v-if="!hasStartedMaking" type="primary" @click="handleMakerStart">开始制作</el-button>
-          <el-button type="success" @click="handleMakerComplete">制作完成</el-button>
         </template>
         <template v-if="canDeliver && order.status === 'made'">
           <el-button type="primary" @click="handleDeliveryStart">开始配送</el-button>
@@ -129,14 +103,12 @@ const userStore = useUserStore()
 const loading = ref(false)
 const order = ref<any>(null)
 const reviews = ref<any[]>([])
-const makerId = ref<number | null>(null)
 const deliveryId = ref<number | null>(null)
-const makers = ref<any[]>([])
 const deliverys = ref<any[]>([])
 
 const statusMap: Record<string, string> = {
-  pending: '待接单', accepted: '已接单', making: '制作中',
-  made: '已制作', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
+  pending: '待支付', accepted: '待配送', making: '待配送',
+  made: '待配送', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
 }
 
 function statusTagType(status: string) {
@@ -145,25 +117,20 @@ function statusTagType(status: string) {
 }
 
 const canDispatch = computed(() =>
-  ['boss', 'admin', 'salesperson'].includes(userStore.role) && hasPermission('order:dispatch')
+  ['boss', 'admin'].includes(userStore.role) && hasPermission('order:dispatch')
 )
-const canMake = computed(() => userStore.role === 'maker')
 const canDeliver = computed(() => userStore.role === 'delivery')
 const isFinishedOrder = computed(() =>
   ['delivered', 'completed', 'cancelled'].includes(order.value?.status)
 )
 const canCancel = computed(() =>
-  ['boss', 'admin', 'salesperson'].includes(userStore.role) && !isFinishedOrder.value
+  ['boss', 'admin'].includes(userStore.role) && !isFinishedOrder.value
 )
 const canOperate = computed(() =>
   !isFinishedOrder.value && (
-    ['boss', 'admin', 'salesperson'].includes(userStore.role)
-    || (canMake.value && order.value?.status === 'making')
+    ['boss', 'admin'].includes(userStore.role)
     || (canDeliver.value && ['made', 'delivering'].includes(order.value?.status))
   )
-)
-const hasStartedMaking = computed(() =>
-  order.value?.flows?.some((flow: any) => flow.action === '开始制作')
 )
 
 async function fetchOrder() {
@@ -171,11 +138,7 @@ async function fetchOrder() {
   try {
     order.value = await orderApi.detail(+route.params.id)
     reviews.value = await request.get(`/reviews/order/${route.params.id}`)
-    if (canDispatch.value && order.value.status === 'accepted') {
-      makers.value = await userApi.dispatchStaff('maker')
-      deliverys.value = await userApi.dispatchStaff('delivery')
-    }
-    if (canDispatch.value && order.value.status === 'made') {
+    if (canDispatch.value && ['accepted', 'making', 'made'].includes(order.value.status)) {
       deliverys.value = await userApi.dispatchStaff('delivery')
     }
   } finally {
@@ -183,43 +146,10 @@ async function fetchOrder() {
   }
 }
 
-async function handleAccept() {
-  await orderApi.accept(order.value.id)
-  ElMessage.success('接单成功')
-  fetchOrder()
-}
-
-async function handleDispatchMaker() {
-  if (!makerId.value) return
-  await orderApi.dispatchToMaker(order.value.id, makerId.value)
-  ElMessage.success('已派单给制作员')
-  fetchOrder()
-}
-
-async function handleDispatchBoth() {
-  if (!makerId.value || !deliveryId.value) return
-  await orderApi.dispatchBoth(order.value.id, makerId.value, deliveryId.value)
-  ElMessage.success('已同时派单给制作员和配送员')
-  fetchOrder()
-}
-
 async function handleDispatchDelivery() {
   if (!deliveryId.value) return
   await orderApi.dispatchToDelivery(order.value.id, deliveryId.value)
   ElMessage.success('已派单给配送员')
-  fetchOrder()
-}
-
-async function handleMakerStart() {
-  await orderApi.makerStart(order.value.id)
-  ElMessage.success('已开始制作')
-  fetchOrder()
-}
-
-async function handleMakerComplete() {
-  await ElMessageBox.confirm('确认该订单已经制作完成?', '提示', { type: 'warning' })
-  await orderApi.makerComplete(order.value.id)
-  ElMessage.success('制作完成，已通知业务员派送')
   fetchOrder()
 }
 

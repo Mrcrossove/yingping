@@ -59,7 +59,7 @@
         <el-button v-if="canExport" type="success" @click="handleExport">导出Excel</el-button>
       </div>
       <div style="margin-bottom: 12px;" v-if="canDispatch && selectedOrders.length > 0">
-        <el-button type="warning" @click="showBatchDialog">批量派单 ({{ selectedOrders.length }} 单)</el-button>
+        <el-button type="warning" @click="showBatchDialog">批量派配送员 ({{ selectedOrders.length }} 单)</el-button>
       </div>
       <el-table :data="orders" v-loading="loading" stripe @selection-change="onSelectionChange" ref="orderTable">
         <el-table-column v-if="canDispatch" type="selection" width="40" :selectable="isSelectable" />
@@ -95,8 +95,6 @@
         <el-table-column label="支付状态" width="100">
           <template #default="{ row }">{{ paymentStatusText(row) }}</template>
         </el-table-column>
-        <el-table-column v-if="showStaffColumns" prop="salesperson.realName" label="业务员" width="100" />
-        <el-table-column v-if="showStaffColumns" prop="maker.realName" label="制作员" width="100" />
         <el-table-column v-if="showStaffColumns" prop="delivery.realName" label="配送员" width="100" />
         <el-table-column prop="createdAt" label="下单时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
@@ -115,14 +113,9 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="batchVisible" title="批量派单" width="450px">
+    <el-dialog v-model="batchVisible" title="批量派配送员" width="450px">
       <el-form label-width="80px">
         <el-form-item label="已选">已选择 {{ selectedOrders.length }} 个订单</el-form-item>
-        <el-form-item label="制作员">
-          <el-select v-model="batchMakerId" placeholder="选择制作员" style="width:100%">
-            <el-option v-for="m in makers" :key="m.id" :label="m.realName" :value="m.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="配送员">
           <el-select v-model="batchDeliveryId" placeholder="选择配送员" style="width:100%">
             <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
@@ -131,7 +124,7 @@
       </el-form>
       <template #footer>
         <el-button @click="batchVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!batchMakerId || !batchDeliveryId" @click="handleBatchDispatch">确认派单</el-button>
+        <el-button type="primary" :disabled="!batchDeliveryId" @click="handleBatchDispatch">确认派单</el-button>
       </template>
     </el-dialog>
   </div>
@@ -160,26 +153,23 @@ const staffId = ref<number | null>(null)
 const staffOptions = ref<any[]>([])
 const staffLoading = ref(false)
 const role = computed(() => userStore.role)
-const canDispatch = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value) && hasPermission('order:dispatch'))
+const canDispatch = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:dispatch'))
 const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('export:manage'))
-const showStaffColumns = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
-const canFilterStaff = computed(() => ['boss', 'admin', 'salesperson'].includes(role.value))
+const showStaffColumns = computed(() => ['boss', 'admin'].includes(role.value))
+const canFilterStaff = computed(() => ['boss', 'admin'].includes(role.value))
 const staffRoleOptions = computed(() => {
   if (['boss', 'admin'].includes(role.value)) {
     return [
       { label: '商户', value: 'merchant' },
-      { label: '业务员', value: 'salesperson' },
-      { label: '制作员', value: 'maker' },
       { label: '配送员', value: 'delivery' },
     ]
   }
-  if (role.value === 'salesperson') return [{ label: '商户', value: 'merchant' }]
   return []
 })
 
 const statusMap: Record<string, string> = {
-  pending: '待接单', accepted: '已接单', making: '制作中',
-  made: '已制作', delivering: '配送中', delivered: '已送达', completed: '已完成', cancelled: '已取消',
+  pending: '待支付', accepted: '待配送', making: '待配送',
+  made: '待配送', delivering: '配送中', delivered: '已送达', completed: '已完成', cancelled: '已取消',
 }
 const settlementTypeMap: Record<string, string> = {
   wechat: '微信支付',
@@ -223,8 +213,6 @@ function buildQueryParams() {
   if (canFilterStaff.value && staffRole.value && staffId.value) {
     const keyMap: Record<string, string> = {
       merchant: 'merchantId',
-      salesperson: 'salespersonId',
-      maker: 'makerId',
       delivery: 'deliveryId',
     }
     params[keyMap[staffRole.value]] = staffId.value
@@ -293,25 +281,22 @@ async function handleExport() {
 
 const selectedOrders = ref<any[]>([])
 const batchVisible = ref(false)
-const batchMakerId = ref<number | null>(null)
 const batchDeliveryId = ref<number | null>(null)
-const makers = ref<any[]>([])
 const deliverys = ref<any[]>([])
 
-function isSelectable(row: any) { return canDispatch.value && row.status === 'accepted' }
+function isSelectable(row: any) { return canDispatch.value && ['accepted', 'making', 'made'].includes(row.status) }
 function onSelectionChange(val: any[]) { selectedOrders.value = val }
 
 async function showBatchDialog() {
   if (!canDispatch.value) return
-  const batches = await Promise.all([userApi.dispatchStaff('maker'), userApi.dispatchStaff('delivery')])
-  makers.value = batches[0]; deliverys.value = batches[1]
+  deliverys.value = await userApi.dispatchStaff('delivery')
   batchVisible.value = true
 }
 
 async function handleBatchDispatch() {
-  if (!batchMakerId.value || !batchDeliveryId.value) return
+  if (!batchDeliveryId.value) return
   const orderIds = selectedOrders.value.map(o => o.id)
-  await (orderApi as any).batchDispatch(orderIds, batchMakerId.value, batchDeliveryId.value)
+  await orderApi.batchDispatch(orderIds, batchDeliveryId.value)
   ElMessage.success('批量派单完成')
   batchVisible.value = false
   selectedOrders.value = []

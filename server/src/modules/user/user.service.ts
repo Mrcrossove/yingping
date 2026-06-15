@@ -3,8 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { NotificationService } from '../notification/notification.service';
 
-const EMPLOYEE_ROLES = ['boss', 'admin', 'salesperson', 'maker', 'delivery', 'promoter'];
-const CREATABLE_EMPLOYEE_ROLES = ['admin', 'salesperson', 'maker', 'delivery', 'promoter'];
+const EMPLOYEE_ROLES = ['boss', 'admin', 'delivery', 'promoter'];
+const CREATABLE_EMPLOYEE_ROLES = ['admin', 'delivery', 'promoter'];
 
 @Injectable()
 export class UserService {
@@ -50,7 +50,7 @@ export class UserService {
   }
 
   async getEarningOptions(query: { role?: string; keyword?: string }) {
-    const roles = ['salesperson', 'maker', 'delivery', 'promoter'];
+    const roles = ['delivery', 'promoter'];
     const where: any = {
       role: query.role && roles.includes(query.role) ? query.role : { in: roles as any[] },
       status: 1,
@@ -91,7 +91,7 @@ export class UserService {
   }
 
   async getDispatchStaff(role: string) {
-    if (!['maker', 'delivery'].includes(role)) {
+    if (role !== 'delivery') {
       throw new BadRequestException('员工角色不正确');
     }
 

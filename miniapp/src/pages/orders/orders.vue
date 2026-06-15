@@ -42,7 +42,7 @@
         <!-- 商户信息 -->
         <view class="o-merchant">
           <text class="o-merchant-name">🏪 {{ order.merchantName }}</text>
-          <text class="o-merchant-phone" @click="callSalesperson(order)">📞</text>
+          <text class="o-merchant-phone" @click="callCustomerService">📞</text>
         </view>
 
         <!-- 商品清单（折叠） -->
@@ -66,16 +66,9 @@
           </view>
           <!-- 角色操作按钮 -->
           <view class="o-actions">
-            <!-- 业务员 -->
-            <template v-if="role === 'salesperson'">
-              <view v-if="order.status === 'pending'" class="btn primary" @click="handleAction(order, 'accept')">确认接单</view>
-            </template>
-            <!-- 制作员 -->
-            <template v-if="role === 'maker'">
-              <view v-if="order.status === 'making'" class="btn warning" @click="handleAction(order, 'maker-complete')">制作完成</view>
-            </template>
             <!-- 配送员 -->
             <template v-if="role === 'delivery'">
+              <view v-if="['making', 'made'].includes(order.status)" class="btn primary" @click="handleAction(order, 'delivery-start')">开始配送</view>
               <view v-if="order.status === 'delivering'" class="btn success" @click="handleAction(order, 'delivery-done')">确认送达</view>
             </template>
             <!-- 商户 -->
@@ -83,7 +76,7 @@
               <view v-if="canCancel(order)" class="btn outline danger" @click="handleAction(order, 'cancel')">取消订单</view>
               <view v-if="canRefund(order)" class="btn danger" @click="handleAction(order, 'refund')">申请退款</view>
               <view v-if="isCompletedOrder(order)" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
-              <view v-if="order.status === 'pending'" class="btn outline" @click="callSalesperson(order)">联系业务员</view>
+              <view v-if="order.status === 'pending'" class="btn outline" @click="callCustomerService">联系客服</view>
             </template>
           </view>
         </view>
@@ -145,15 +138,16 @@ const stats = computed(() => {
   const counts: Record<string, number> = {}
   orders.value.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1 })
   return [
-    { label: '待接单', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
-    { label: '制作中', count: counts.making || 0, color: '#67C23A', status: 'making' },
-    { label: '待配送', count: counts.delivering || 0, color: '#2f8a5a', status: 'delivering' },
+    { label: '待支付', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
+    { label: '待配送', count: (counts.accepted || 0) + (counts.making || 0) + (counts.made || 0), color: '#2f8a5a', status: 'made' },
+    { label: '配送中', count: counts.delivering || 0, color: '#67C23A', status: 'delivering' },
     { label: '已完成', count: (counts.delivered || 0) + (counts.completed || 0), color: '#909399', status: 'completed' },
   ]
 })
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'completed') return orders.value.filter(o => ['delivered', 'completed'].includes(o.status))
+  if (filterStatus.value === 'made') return orders.value.filter(o => ['accepted', 'making', 'made'].includes(o.status))
   if (filterStatus.value) return orders.value.filter(o => o.status === filterStatus.value)
   return orders.value
 })
@@ -166,7 +160,6 @@ async function fetchOrders() {
       ...order,
       merchantName: order.merchant?.realName || '-',
       merchantPhone: order.merchant?.phone || '',
-      salespersonPhone: order.salesperson?.phone || '',
       paymentStatus: order.payment?.status || '',
       paymentStatusText: order.settlementType === 'monthly'
         ? settlementStatusMap[order.settlementStatus] || '月结'
@@ -184,14 +177,14 @@ function toggleExpand(id: number) { expandedOrderId.value = expandedOrderId.valu
 function loadMore() {}
 function callPhone(phone: string) {
   if (!phone) {
-    uni.showToast({ title: '暂无业务员联系电话', icon: 'none' })
+    uni.showToast({ title: '暂无客服电话', icon: 'none' })
     return
   }
   uni.makePhoneCall({ phoneNumber: phone })
 }
 
-function callSalesperson(order: any) {
-  callPhone(order.salespersonPhone || customerServicePhone.value)
+function callCustomerService() {
+  callPhone(customerServicePhone.value)
 }
 
 function canCancel(order: any) {
@@ -219,8 +212,7 @@ async function fetchPublicSettings() {
 
 function handleAction(order: any, action: string) {
   const titles: Record<string, string> = {
-    accept: '确认接单', 'dispatch-maker': '派单给制作员', 'dispatch-delivery': '分配配送员',
-    'maker-complete': '制作完成', 'delivery-done': '确认送达', reorder: '再次下单',
+    'delivery-start': '开始配送', 'delivery-done': '确认送达', reorder: '再次下单',
     cancel: '取消订单', refund: '申请退款',
   }
   confirmDialog.show = true
@@ -229,8 +221,7 @@ function handleAction(order: any, action: string) {
   confirmDialog.orderId = order.id
   confirmDialog.action = action
   confirmCallback.value = async () => {
-    if (action === 'accept') await orderApi.accept(order.id)
-    else if (action === 'maker-complete') await orderApi.makerComplete(order.id)
+    if (action === 'delivery-start') await orderApi.deliveryStart(order.id)
     else if (action === 'delivery-done') await orderApi.deliveryComplete(order.id)
     else if (action === 'cancel') await orderApi.cancel(order.id)
     else if (action === 'refund') await paymentApi.requestRefund(order.id)

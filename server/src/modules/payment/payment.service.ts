@@ -125,14 +125,14 @@ export class PaymentService {
           settlementStatus: 'paid',
           ...(payment.order.status === 'pending'
             ? {
-                status: 'accepted',
+                status: 'made',
                 flows: {
                   create: {
                     fromRole: 'merchant',
-                    toRole: 'salesperson',
+                    toRole: 'admin',
                     operatorId: payment.userId,
                     action: '系统确认订单',
-                    remark: '微信支付成功后自动接单',
+                    remark: '微信支付成功后自动进入待配送',
                   },
                 },
               }
@@ -147,8 +147,8 @@ export class PaymentService {
     });
 
     if (notifyOrder) {
-      await this.safeNotifyRoles(['boss', 'admin', 'salesperson'], {
-        title: '订单已支付待派单',
+      await this.safeNotifyRoles(['boss', 'admin'], {
+        title: '订单已支付待配送',
         content: `订单 ${notifyOrder.orderNo} 金额 ¥${Number(notifyOrder.totalAmount).toFixed(2)}`,
         type: 'order',
         targetPath: `/orders/${notifyOrder.id}`,
@@ -298,7 +298,6 @@ export class PaymentService {
   private assertCanAccessOrder(order: any, user: { id: number; role: Role }) {
     if (user.role === 'boss' || user.role === 'admin') return;
     if (user.role === 'merchant' && order.merchantId === user.id) return;
-    if (user.role === 'salesperson' && order.salespersonId === user.id) return;
     throw new ForbiddenException('无权访问该支付订单');
   }
 

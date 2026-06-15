@@ -24,8 +24,6 @@
               <el-option v-for="u in employees" :key="u.id" :label="`${u.realName} (${roleMap[u.role] || u.role})`" :value="u.id" />
             </el-select>
             <el-select v-model="filters.role" placeholder="角色" clearable style="width: 130px;">
-              <el-option label="业务员" value="salesperson" />
-              <el-option label="制作员" value="maker" />
               <el-option label="配送员" value="delivery" />
               <el-option label="推广员" value="promoter" />
             </el-select>
@@ -104,8 +102,6 @@ const filters = reactive({
 })
 
 const roleMap: Record<string, string> = {
-  salesperson: '业务员',
-  maker: '制作员',
   delivery: '配送员',
   promoter: '推广员',
   boss: '老板',

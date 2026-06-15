@@ -1,8 +1,6 @@
 export const ROLE_HOME: Record<string, string> = {
   boss: '/dashboard',
   admin: '/dashboard',
-  salesperson: '/orders',
-  maker: '/orders',
   delivery: '/orders',
   promoter: '/promotion',
   merchant: '/403',
@@ -10,15 +8,15 @@ export const ROLE_HOME: Record<string, string> = {
 
 export const ROUTE_ROLES: Record<string, string[]> = {
   Dashboard: ['boss', 'admin'],
-  Orders: ['boss', 'admin', 'salesperson', 'maker', 'delivery'],
-  OrderDetail: ['boss', 'admin', 'salesperson', 'maker', 'delivery'],
+  Orders: ['boss', 'admin', 'delivery'],
+  OrderDetail: ['boss', 'admin', 'delivery'],
   Products: ['boss', 'admin'],
   Banners: ['boss', 'admin'],
   Users: ['boss', 'admin'],
   Merchants: ['boss', 'admin'],
   Commissions: ['boss', 'admin'],
   Earnings: ['boss', 'admin'],
-  MyEarnings: ['salesperson', 'maker', 'delivery', 'promoter'],
+  MyEarnings: ['delivery', 'promoter'],
   Withdrawals: ['boss', 'admin'],
   Promotion: ['boss', 'admin', 'promoter'],
   Permissions: ['boss'],

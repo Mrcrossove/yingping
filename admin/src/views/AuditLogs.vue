@@ -42,7 +42,7 @@ const pageSize = ref(20)
 const keyword = ref('')
 
 function roleLabel(r: string) {
-  const m: Record<string, string> = { boss: '老板', admin: '管理员', salesperson: '业务员', maker: '制作员', delivery: '配送员', promoter: '推广员', merchant: '商户' }
+  const m: Record<string, string> = { boss: '老板', admin: '管理员', delivery: '配送员', promoter: '推广员', merchant: '商户' }
   return m[r] || r
 }
 

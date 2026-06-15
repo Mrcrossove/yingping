@@ -17,7 +17,7 @@ export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null)
 
   const isLoggedIn = computed(() => !!token.value)
-  const isEmployee = computed(() => ['salesperson', 'maker', 'delivery', 'promoter'].includes(user.value?.role || ''))
+  const isEmployee = computed(() => ['delivery', 'promoter'].includes(user.value?.role || ''))
 
   function checkLogin() {
     token.value = uni.getStorageSync('token') || ''

@@ -13,8 +13,6 @@ export class ExportService {
     status?: string;
     keyword?: string;
     merchantId?: string;
-    salespersonId?: string;
-    makerId?: string;
     deliveryId?: string;
     settlementType?: string;
     settlementStatus?: string;
@@ -23,8 +21,6 @@ export class ExportService {
     if (query.status) where.status = query.status;
     if (query.keyword) where.orderNo = { contains: query.keyword };
     if (query.merchantId) where.merchantId = +query.merchantId;
-    if (query.salespersonId) where.salespersonId = +query.salespersonId;
-    if (query.makerId) where.makerId = +query.makerId;
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
     if (query.settlementType) where.settlementType = query.settlementType;
     if (query.settlementStatus) where.settlementStatus = query.settlementStatus;
@@ -39,8 +35,6 @@ export class ExportService {
       include: {
         items: { include: { product: true } },
         merchant: { select: { realName: true, phone: true } },
-        salesperson: { select: { realName: true } },
-        maker: { select: { realName: true } },
         delivery: { select: { realName: true } },
         payment: { select: { status: true, transactionId: true, paidAt: true } },
       },
@@ -60,8 +54,6 @@ export class ExportService {
       { header: '状态', key: 'status', width: 12 },
       { header: '结算方式', key: 'settlementType', width: 12 },
       { header: '结算状态', key: 'settlementStatus', width: 14 },
-      { header: '业务员', key: 'salesperson', width: 12 },
-      { header: '制作员', key: 'maker', width: 12 },
       { header: '配送员', key: 'delivery', width: 12 },
       { header: '收货人', key: 'receiverName', width: 12 },
       { header: '收货电话', key: 'receiverPhone', width: 15 },
@@ -84,8 +76,6 @@ export class ExportService {
           status: order.status,
           settlementType: order.settlementType === 'monthly' ? '月结' : '微信支付',
           settlementStatus: this.settlementStatusText(order.settlementStatus),
-          salesperson: order.salesperson?.realName,
-          maker: order.maker?.realName,
           delivery: order.delivery?.realName,
           receiverName: order.receiverName || '',
           receiverPhone: order.receiverPhone || '',

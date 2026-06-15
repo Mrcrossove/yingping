@@ -13,7 +13,7 @@ export class WithdrawalController {
   constructor(private withdrawalService: WithdrawalService) {}
 
   @Post('apply')
-  @Roles('salesperson', 'maker', 'delivery', 'promoter')
+  @Roles('delivery', 'promoter')
   async apply(@Body() body: any, @Request() req) {
     const data = await this.withdrawalService.apply(req.user.id, body);
     return ApiResult.success(data, '提现申请已提交');
