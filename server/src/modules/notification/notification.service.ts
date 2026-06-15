@@ -1,10 +1,13 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import axios from 'axios';
 
 type NotificationPayload = { title: string; content?: string; type?: string; targetPath?: string };
 
 @Injectable()
 export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(data: { userId: number } & NotificationPayload) {
@@ -17,7 +20,7 @@ export class NotificationService {
       select: { id: true },
     });
     if (users.length === 0) return { count: 0 };
-    return this.prisma.notification.createMany({
+    const result = await this.prisma.notification.createMany({
       data: users.map((user) => ({
         userId: user.id,
         title: data.title,
@@ -26,6 +29,8 @@ export class NotificationService {
         targetPath: data.targetPath,
       })),
     });
+    await this.pushExternalRoleAlert(roles, data);
+    return result;
   }
 
   async createForUsers(userIds: number[], data: NotificationPayload) {
@@ -70,5 +75,38 @@ export class NotificationService {
       where: { userId, read: false },
       data: { read: true },
     });
+  }
+
+  private async pushExternalRoleAlert(roles: string[], data: NotificationPayload) {
+    if (!roles.some((role) => ['boss', 'admin'].includes(role))) return;
+    if ((data.type || 'system') !== 'order') return;
+
+    const webhookUrl = process.env.WEWORK_BOT_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    try {
+      await axios.post(webhookUrl, {
+        msgtype: 'markdown',
+        markdown: {
+          content: this.buildWechatWorkMarkdown(data),
+        },
+      }, { timeout: 8000 });
+    } catch (error: any) {
+      this.logger.warn(`企业微信机器人通知发送失败: ${error?.message || 'unknown error'}`);
+    }
+  }
+
+  private buildWechatWorkMarkdown(data: NotificationPayload) {
+    const lines = [
+      `**${data.title}**`,
+      data.content || '',
+    ].filter(Boolean);
+
+    const adminBaseUrl = (process.env.ADMIN_BASE_URL || '').replace(/\/$/, '');
+    if (adminBaseUrl && data.targetPath) {
+      lines.push(`[查看后台详情](${adminBaseUrl}/#${data.targetPath})`);
+    }
+
+    return lines.join('\n');
   }
 }
