@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 import { NotificationService } from '../notification/notification.service';
 import { PaymentService } from '../payment/payment.service';
+import { DispatchService } from '../dispatch/dispatch.service';
 
 @Injectable()
 export class OrderService {
@@ -15,6 +16,7 @@ export class OrderService {
     private notificationService: NotificationService,
     @Inject(forwardRef(() => PaymentService))
     private paymentService: PaymentService,
+    private dispatchService: DispatchService,
   ) {}
 
   async create(dto: {
@@ -116,6 +118,10 @@ export class OrderService {
       type: 'order',
       targetPath: `/orders/${order.id}`,
     });
+
+    if (settlementType === 'monthly') {
+      await this.dispatchService.autoAssignDelivery(order.id, { id: merchantId, role: 'merchant' });
+    }
 
     return order;
   }

@@ -4,9 +4,10 @@ import { OrderController } from './order.controller';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { NotificationModule } from '../notification/notification.module';
 import { PaymentModule } from '../payment/payment.module';
+import { DispatchModule } from '../dispatch/dispatch.module';
 
 @Module({
-  imports: [forwardRef(() => WebsocketModule), NotificationModule, forwardRef(() => PaymentModule)],
+  imports: [forwardRef(() => WebsocketModule), NotificationModule, forwardRef(() => PaymentModule), DispatchModule],
   controllers: [OrderController],
   providers: [OrderService],
   exports: [OrderService],

@@ -24,6 +24,7 @@ import { ReviewModule } from './modules/review/review.module';
 import { BannerModule } from './modules/banner/banner.module';
 import { LocationModule } from './modules/location/location.module';
 import { SettingModule } from './modules/setting/setting.module';
+import { DispatchModule } from './modules/dispatch/dispatch.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SettingModule } from './modules/setting/setting.module';
     BannerModule,
     LocationModule,
     SettingModule,
+    DispatchModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

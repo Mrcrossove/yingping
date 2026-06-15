@@ -5,12 +5,14 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { PaymentStatus, Role } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
+import { DispatchService } from '../dispatch/dispatch.service';
 
 @Injectable()
 export class PaymentService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private dispatchService: DispatchService,
   ) {}
 
   async createPayment(orderId: number, user: { id: number; role: Role }) {
@@ -142,7 +144,7 @@ export class PaymentService {
 
       return tx.order.findUnique({
         where: { id: payment.orderId },
-        select: { id: true, orderNo: true, totalAmount: true },
+        select: { id: true, orderNo: true, totalAmount: true, merchantId: true, status: true, deliveryId: true },
       });
     });
 
@@ -153,6 +155,7 @@ export class PaymentService {
         type: 'order',
         targetPath: `/orders/${notifyOrder.id}`,
       });
+      await this.dispatchService.autoAssignDelivery(notifyOrder.id, { id: notifyOrder.merchantId, role: 'merchant' });
     }
 
     return { code: 'SUCCESS', message: '成功' };
@@ -345,13 +348,15 @@ export class PaymentService {
   }
 
   private async markPaidPayment(paymentId: number, transactionId?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findUnique({
         where: { id: paymentId },
         include: { order: true },
       });
       if (!payment) throw new BadRequestException('支付记录不存在');
-      if (payment.status === 'paid') return payment;
+      if (payment.status === 'paid') {
+        return { updated: payment, shouldAutoDispatch: false, orderId: payment.orderId, userId: payment.userId };
+      }
 
       const updated = await tx.payment.update({
         where: { id: payment.id },
@@ -383,8 +388,14 @@ export class PaymentService {
         },
       });
 
-      return updated;
+      return { updated, shouldAutoDispatch: payment.order.status === 'pending', orderId: payment.orderId, userId: payment.userId };
     });
+
+    if (result.shouldAutoDispatch) {
+      await this.dispatchService.autoAssignDelivery(result.orderId, { id: result.userId, role: 'merchant' });
+    }
+
+    return result.updated;
   }
 
   private async safeNotifyRoles(roles: string[], data: { title: string; content?: string; type?: string; targetPath?: string }) {
