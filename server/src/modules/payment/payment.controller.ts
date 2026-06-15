@@ -25,6 +25,13 @@ export class PaymentController {
     return ApiResult.success(data);
   }
 
+  @Post('sync/:orderId')
+  @UseGuards(JwtAuthGuard)
+  async syncPayment(@Param('orderId') orderId: string, @Request() req) {
+    const data = await this.paymentService.syncPaymentStatus(+orderId, req.user);
+    return ApiResult.success(data);
+  }
+
   @Post('notify')
   async payNotify(
     @Body() body: any,

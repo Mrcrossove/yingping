@@ -24,4 +24,6 @@ export async function requestOrderPayment(orderId: number, openid?: string) {
       fail: reject,
     })
   })
+
+  await paymentApi.sync(orderId).catch(() => null)
 }

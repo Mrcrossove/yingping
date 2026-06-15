@@ -57,6 +57,7 @@ export const settingApi = {
 export const paymentApi = {
   create: (orderId: number) => post(`/payments/create/${orderId}`),
   jsapi: (orderId: number, openid?: string) => post(`/payments/jsapi/${orderId}`, { openid }),
+  sync: (orderId: number) => post(`/payments/sync/${orderId}`),
   requestRefund: (orderId: number) => post(`/payments/request-refund/${orderId}`),
 }
 
