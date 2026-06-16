@@ -22,7 +22,9 @@
         </el-table-column>
         <el-table-column v-for="role in roles" :key="role.key" :label="role.label" width="140">
           <template #default="{ row }">
-            <el-tag v-if="getRule(row, role.key)" type="success">{{ formatRule(getRule(row, role.key)) }}</el-tag>
+            <el-tag v-if="getRoleRules(row, role.key).length" type="success">
+              已设置 {{ getRoleRules(row, role.key).length }} 人
+            </el-tag>
             <el-tag v-else type="info">未设置</el-tag>
           </template>
         </el-table-column>
@@ -34,9 +36,24 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="`设置提成 - ${currentProduct?.name || ''}`" width="680px">
+    <el-dialog v-model="dialogVisible" :title="`设置提成 - ${currentProduct?.name || ''}`" width="860px">
+      <el-alert
+        v-if="ruleForm.length === 0"
+        title="暂无可设置提成的配送员或推广员"
+        description="请先在员工管理中新增并启用配送员或推广员。"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="empty-alert"
+      />
       <el-table :data="ruleForm" border>
         <el-table-column prop="label" label="角色" width="100" />
+        <el-table-column label="员工" min-width="160">
+          <template #default="{ row }">
+            <div>{{ row.realName }}</div>
+            <div class="employee-phone">{{ row.phone || '-' }}</div>
+          </template>
+        </el-table-column>
         <el-table-column label="启用" width="80">
           <template #default="{ row }">
             <el-switch v-model="row.enabled" />
@@ -91,19 +108,18 @@ const keyword = ref('')
 const dialogVisible = ref(false)
 const currentProduct = ref<any>(null)
 const ruleForm = ref<any[]>([])
+const employees = ref<any[]>([])
 
 function money(value: any) {
   return Number(value || 0).toFixed(2)
 }
 
-function getRule(product: any, role: string) {
-  return (product.rules || []).find((item: any) => item.role === role)
+function getRoleRules(product: any, role: string) {
+  return (product.rules || []).filter((item: any) => item.role === role && item.userId)
 }
 
-function formatRule(rule: any) {
-  if (!rule) return '未设置'
-  const value = Number(rule.value || 0)
-  return rule.type === 'fixed' ? `${value.toFixed(2)}元/件` : `${value.toFixed(2)}%`
+function getRule(product: any, role: string, userId: number) {
+  return (product.rules || []).find((item: any) => item.role === role && item.userId === userId)
 }
 
 async function fetchRules() {
@@ -112,8 +128,14 @@ async function fetchRules() {
     const params: any = {}
     if (filterCategoryId.value) params.categoryId = filterCategoryId.value
     if (keyword.value) params.keyword = keyword.value
-    products.value = await commissionApi.list(params)
-    categories.value = await categoryApi.list()
+    const [productRules, categoryList, staffList] = await Promise.all([
+      commissionApi.list(params),
+      categoryApi.list(),
+      commissionApi.staff(),
+    ])
+    products.value = productRules
+    categories.value = categoryList
+    employees.value = staffList
   } finally {
     loading.value = false
   }
@@ -121,11 +143,15 @@ async function fetchRules() {
 
 function showDialog(product: any) {
   currentProduct.value = product
-  ruleForm.value = roles.map((role) => {
-    const rule = getRule(product, role.key)
+  ruleForm.value = employees.value.map((employee) => {
+    const role = roles.find((item) => item.key === employee.role)
+    const rule = getRule(product, employee.role, employee.id)
     return {
-      role: role.key,
-      label: role.label,
+      role: employee.role,
+      userId: employee.id,
+      realName: employee.realName,
+      phone: employee.phone,
+      label: role?.label || employee.role,
       enabled: Boolean(rule),
       type: rule?.type || 'percentage',
       value: Number(rule?.value || 0),
@@ -154,4 +180,6 @@ onMounted(fetchRules)
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .filters { display: flex; align-items: center; gap: 10px; }
 .unit-text { margin-left: 8px; color: #606266; }
+.employee-phone { color: #909399; font-size: 12px; margin-top: 2px; }
+.empty-alert { margin-bottom: 12px; }
 </style>

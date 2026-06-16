@@ -37,6 +37,7 @@ model User {
   notifications      Notification[]
   addresses           Address[]
   reviews             Review[]
+  commissionRules     CommissionRule[]
 
   @@map("users")
 }
@@ -222,6 +223,7 @@ model OrderFlow {
 model CommissionRule {
   id         Int      @id @default(autoincrement())
   productId  Int      @map("product_id")
+  userId     Int?     @map("user_id")
   role       Role
   type       CommissionType @default(percentage)
   value      Decimal  @db.Decimal(10, 2)
@@ -229,8 +231,9 @@ model CommissionRule {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   product Product @relation(fields: [productId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
 
-  @@unique([productId, role])
+  @@unique([productId, role, userId], map: "commission_rules_product_id_role_user_id_key")
   @@map("commission_rules")
 }
 

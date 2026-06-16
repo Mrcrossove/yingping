@@ -8,6 +8,7 @@ export { orderApi } from './order'
 
 export const commissionApi = {
   list: (params?: any) => request.get('/commissions', { params }),
+  staff: () => request.get('/commissions/staff'),
   setProductRules: (productId: number, rules: any[]) =>
     request.post(`/commissions/product/${productId}`, { rules }),
   deleteRule: (id: number) => request.delete(`/commissions/${id}`),

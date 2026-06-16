@@ -333,6 +333,7 @@ export class UserService {
       promoterBindings,
       adminPermissions,
       notifications,
+      commissionRules,
     ] = await Promise.all([
       this.prisma.order.count({ where: { merchantId: id } }),
       this.prisma.order.count({ where: { salespersonId: id } }),
@@ -347,11 +348,12 @@ export class UserService {
       this.prisma.merchantBinding.count({ where: { promoterId: id } }),
       this.prisma.adminPermission.count({ where: { adminId: id } }),
       this.prisma.notification.count({ where: { userId: id } }),
+      this.prisma.commissionRule.count({ where: { userId: id } }),
     ]);
 
     const relationCount = merchantOrders + salespersonOrders + makerOrders + deliveryOrders
       + orderFlows + earnings + withdrawals + withdrawalItems + promotionCodes
-      + merchantBindings + promoterBindings + adminPermissions + notifications;
+      + merchantBindings + promoterBindings + adminPermissions + notifications + commissionRules;
     if (relationCount > 0) {
       throw new BadRequestException('该员工已有业务关联，不能直接删除，请使用禁用');
     }

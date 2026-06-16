@@ -457,8 +457,16 @@ export class OrderService {
     if (existing > 0) return;
 
     const productIds = order.items.map((item) => item.productId);
+    const promoterBinding = await this.prisma.merchantBinding.findUnique({ where: { merchantId: order.merchantId } });
+    const promoterId = promoterBinding?.promoterId || 0;
+    const commissionUserIds = [order.deliveryId || 0, promoterId].filter((id) => id > 0);
+    if (commissionUserIds.length === 0) return;
+
     const commissionRules = await this.prisma.commissionRule.findMany({
-      where: { productId: { in: productIds } },
+      where: {
+        productId: { in: productIds },
+        userId: { in: commissionUserIds },
+      },
     });
     if (commissionRules.length === 0) return;
 
@@ -473,11 +481,8 @@ export class OrderService {
         if (amount.lessThanOrEqualTo(0)) continue;
 
         let userId = 0;
-        if (rule.role === 'delivery') userId = order.deliveryId || 0;
-        else if (rule.role === 'promoter') {
-          const binding = await this.prisma.merchantBinding.findUnique({ where: { merchantId: order.merchantId } });
-          if (binding) userId = binding.promoterId;
-        }
+        if (rule.role === 'delivery' && rule.userId === order.deliveryId) userId = order.deliveryId || 0;
+        else if (rule.role === 'promoter' && rule.userId === promoterId) userId = promoterId;
         if (userId === 0) continue;
 
         await this.prisma.earning.create({

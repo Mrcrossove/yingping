@@ -20,6 +20,14 @@ export class CommissionController {
     return ApiResult.success(data);
   }
 
+  @Get('staff')
+  @Roles('boss', 'admin')
+  @RequirePermission('commission:manage')
+  async getStaff() {
+    const data = await this.commissionService.getStaff();
+    return ApiResult.success(data);
+  }
+
   @Post('product/:productId')
   @Roles('boss', 'admin')
   @RequirePermission('commission:manage')
