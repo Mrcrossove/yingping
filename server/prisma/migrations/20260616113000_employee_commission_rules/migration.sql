@@ -8,6 +8,24 @@ SET @old_commission_rule_index := (
   LIMIT 1
 );
 
+SET @product_id_index_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'commission_rules'
+    AND INDEX_NAME = 'commission_rules_product_id_idx'
+);
+
+SET @add_product_id_index_sql := IF(
+  @product_id_index_exists > 0,
+  'SELECT 1',
+  'ALTER TABLE `commission_rules` ADD INDEX `commission_rules_product_id_idx` (`product_id`)'
+);
+
+PREPARE add_product_id_index_stmt FROM @add_product_id_index_sql;
+EXECUTE add_product_id_index_stmt;
+DEALLOCATE PREPARE add_product_id_index_stmt;
+
 SET @drop_old_commission_rule_index_sql := IF(
   @old_commission_rule_index IS NULL,
   'SELECT 1',
