@@ -292,6 +292,9 @@ export class UserService {
   async update(id: number, data: { realName?: string; phone?: string; status?: number; role?: string; password?: string }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('用户不存在');
+    if (user.role === 'boss' && data.role && data.role !== 'boss') {
+      throw new BadRequestException('老板账号角色不能修改');
+    }
 
     const updateData: any = {};
     if (data.realName !== undefined) updateData.realName = data.realName;
@@ -310,9 +313,50 @@ export class UserService {
     });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
-    await this.prisma.user.update({ where: { id }, data: { status: 0 } });
+  async remove(id: number, operatorId?: number) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('用户不存在');
+    if (operatorId === id) throw new BadRequestException('不能删除当前登录账号');
+    if (user.role === 'boss') throw new BadRequestException('老板账号不能删除');
+
+    const [
+      merchantOrders,
+      salespersonOrders,
+      makerOrders,
+      deliveryOrders,
+      orderFlows,
+      earnings,
+      withdrawals,
+      withdrawalItems,
+      promotionCodes,
+      merchantBindings,
+      promoterBindings,
+      adminPermissions,
+      notifications,
+    ] = await Promise.all([
+      this.prisma.order.count({ where: { merchantId: id } }),
+      this.prisma.order.count({ where: { salespersonId: id } }),
+      this.prisma.order.count({ where: { makerId: id } }),
+      this.prisma.order.count({ where: { deliveryId: id } }),
+      this.prisma.orderFlow.count({ where: { operatorId: id } }),
+      this.prisma.earning.count({ where: { userId: id } }),
+      this.prisma.withdrawal.count({ where: { userId: id } }),
+      this.prisma.withdrawalItem.count({ where: { userId: id } }),
+      this.prisma.promotionCode.count({ where: { promoterId: id } }),
+      this.prisma.merchantBinding.count({ where: { merchantId: id } }),
+      this.prisma.merchantBinding.count({ where: { promoterId: id } }),
+      this.prisma.adminPermission.count({ where: { adminId: id } }),
+      this.prisma.notification.count({ where: { userId: id } }),
+    ]);
+
+    const relationCount = merchantOrders + salespersonOrders + makerOrders + deliveryOrders
+      + orderFlows + earnings + withdrawals + withdrawalItems + promotionCodes
+      + merchantBindings + promoterBindings + adminPermissions + notifications;
+    if (relationCount > 0) {
+      throw new BadRequestException('该员工已有业务关联，不能直接删除，请使用禁用');
+    }
+
+    await this.prisma.user.delete({ where: { id } });
     return { id };
   }
   async resetPassword(id: number, newPassword: string) {

@@ -124,8 +124,8 @@ export class UserController {
   @Delete(':id')
   @Roles('boss', 'admin')
   @RequirePermission('user:manage')
-  async remove(@Param('id') id: string) {
-    const data = await this.userService.remove(+id);
+  async remove(@Param('id') id: string, @Request() req) {
+    const data = await this.userService.remove(+id, req.user.id);
     return ApiResult.success(data, '删除成功');
   }
 }

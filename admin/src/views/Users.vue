@@ -30,12 +30,13 @@
         <el-table-column prop="createdAt" label="创建时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="showUserDialog(row)">编辑</el-button>
             <el-button v-if="canAssignPermission(row)" type="warning" link @click="showPermissionDialog(row)">权限</el-button>
             <el-button type="success" link @click="showResetPwd(row)">重置密码</el-button>
-            <el-button type="danger" link @click="handleDelete(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
+            <el-button type="danger" link @click="handleToggleStatus(row)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
+            <el-button v-if="canDeleteUser(row)" type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -56,7 +57,7 @@
           <el-input v-model="userForm.realName" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="userForm.role" style="width: 100%" :disabled="!!userForm.id">
+          <el-select v-model="userForm.role" style="width: 100%" :disabled="userForm.role === 'boss'">
             <el-option label="管理员" value="admin" />
             <el-option label="配送员" value="delivery" />
             <el-option label="推广员" value="promoter" />
@@ -169,6 +170,7 @@ function showUserDialog(row?: any) {
 async function handleSaveUser() {
   if (userForm.value.id) {
     const data: any = { realName: userForm.value.realName, phone: userForm.value.phone, status: userForm.value.status }
+    if (userForm.value.role !== 'boss') data.role = userForm.value.role
     if (userForm.value.password) data.password = userForm.value.password
     await userApi.update(userForm.value.id, data)
     ElMessage.success('更新成功')
@@ -180,11 +182,25 @@ async function handleSaveUser() {
   fetchUsers()
 }
 
-async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确定切换状态?', '提示', { type: 'warning' })
-  const user = users.value.find((u) => u.id === id)
-  await userApi.update(id, { status: user?.status === 1 ? 0 : 1 })
+async function handleToggleStatus(row: any) {
+  await ElMessageBox.confirm(`确定${row.status === 1 ? '禁用' : '启用'}该员工?`, '提示', { type: 'warning' })
+  await userApi.update(row.id, { status: row.status === 1 ? 0 : 1 })
   ElMessage.success('操作成功')
+  fetchUsers()
+}
+
+function canDeleteUser(row: any) {
+  return row.role !== 'boss' && row.id !== userStore.user?.id
+}
+
+async function handleDelete(row: any) {
+  await ElMessageBox.confirm(
+    `确定删除员工「${row.realName}」？删除后该账号无法登录，且不能恢复。已有订单、收益、推广绑定等业务关联的员工不能删除，请改用禁用。`,
+    '删除员工',
+    { type: 'warning' },
+  )
+  await userApi.remove(row.id)
+  ElMessage.success('删除成功')
   fetchUsers()
 }
 
