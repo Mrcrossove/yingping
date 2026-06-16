@@ -44,6 +44,9 @@
           <text class="o-merchant-name">🏪 {{ order.merchantName }}</text>
           <text class="o-merchant-phone" @click="callCustomerService">📞</text>
         </view>
+        <view class="o-delivery" v-if="order.deliveryName">
+          <text>配送员：{{ order.deliveryName }}</text>
+        </view>
 
         <!-- 商品清单（折叠） -->
         <view class="o-items" v-if="expandedOrderId === order.id">
@@ -161,6 +164,7 @@ async function fetchOrders() {
       ...order,
       merchantName: order.merchant?.realName || '-',
       merchantPhone: order.merchant?.phone || '',
+      deliveryName: order.delivery?.realName || '',
       paymentStatus: order.payment?.status || '',
       paymentStatusText: order.settlementType === 'monthly'
         ? settlementStatusMap[order.settlementStatus] || '月结'
@@ -282,6 +286,7 @@ onShow(() => {
 .o-merchant { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .o-merchant-name { font-size: 14px; color: #333; }
 .o-merchant-phone { font-size: 18px; }
+.o-delivery { margin: -2px 0 6px; font-size: 12px; color: #606266; }
 .o-items { background: #f9fafb; border-radius: 8px; padding: 8px; margin-bottom: 4px; }
 .o-item-row { display: flex; align-items: center; padding: 3px 0; font-size: 12px; gap: 6px; }
 .oi-name { font-weight: 500; }

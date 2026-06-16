@@ -22,6 +22,23 @@
         </view>
       </view>
 
+      <view v-if="order.delivery" class="section">
+        <text class="section-title">配送信息</text>
+        <view class="row"><text class="label">配送员</text><text>{{ order.delivery.realName || '-' }}</text></view>
+        <view class="row">
+          <text class="label">联系电话</text>
+          <view class="phone-cell">
+            <text>{{ order.delivery.phone || '暂无' }}</text>
+            <button
+              v-if="order.delivery.phone"
+              class="phone-btn"
+              hover-class="phone-btn-hover"
+              @click="callDeliveryPhone(order.delivery.phone)"
+            >拨打</button>
+          </view>
+        </view>
+      </view>
+
       <view class="section">
         <text class="section-title">商品明细</text>
         <view v-for="item in order.items" :key="item.id" class="item-row">
@@ -240,6 +257,14 @@ async function handleConfirmReceipt() {
   uni.showToast({ title: '确认收货成功', icon: 'success' })
   await refreshOrder()
 }
+
+function callDeliveryPhone(phone?: string) {
+  if (!phone) {
+    uni.showToast({ title: '暂无配送员电话', icon: 'none' })
+    return
+  }
+  uni.makePhoneCall({ phoneNumber: phone })
+}
 </script>
 
 <style scoped>
@@ -249,6 +274,10 @@ async function handleConfirmReceipt() {
 .address-row { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-size: 14px; }
 .address-text { flex: 1; text-align: right; color: #333; line-height: 1.5; }
 .label { color: #999; }
+.phone-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: #333; }
+.phone-btn { margin: 0; padding: 0 10px; height: 26px; line-height: 26px; border-radius: 13px; background: #2f8a5a; color: #fff; font-size: 12px; }
+.phone-btn::after { border: none; }
+.phone-btn-hover { background: #267048; }
 .price { color: #f56c6c; font-weight: bold; }
 .status { color: #2f8a5a; font-weight: bold; }
 .section-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; display: block; }
