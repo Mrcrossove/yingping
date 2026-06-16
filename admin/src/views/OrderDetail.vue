@@ -70,7 +70,7 @@
       </el-table>
 
       <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;" v-if="canOperate">
-        <template v-if="['accepted', 'making', 'made'].includes(order.status) && canDispatch">
+        <template v-if="['accepted', 'made'].includes(order.status) && canDispatch">
           <el-select v-model="deliveryId" placeholder="选择配送员" style="width: 160px;">
             <el-option v-for="d in deliverys" :key="d.id" :label="d.realName" :value="d.id" />
           </el-select>
@@ -107,12 +107,12 @@ const deliveryId = ref<number | null>(null)
 const deliverys = ref<any[]>([])
 
 const statusMap: Record<string, string> = {
-  pending: '待支付', accepted: '待配送', making: '待配送',
-  made: '待配送', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
+  pending: '待支付', accepted: '待配送',
+  made: '待配送', delivering: '配送中', delivered: '待商家确认', completed: '已完成', cancelled: '已取消',
 }
 
 function statusTagType(status: string) {
-  const map: Record<string, string> = { pending: 'warning', accepted: 'info', making: '', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
+  const map: Record<string, string> = { pending: 'warning', accepted: 'info', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
   return map[status] || ''
 }
 
@@ -138,7 +138,7 @@ async function fetchOrder() {
   try {
     order.value = await orderApi.detail(+route.params.id)
     reviews.value = await request.get(`/reviews/order/${route.params.id}`)
-    if (canDispatch.value && ['accepted', 'making', 'made'].includes(order.value.status)) {
+    if (canDispatch.value && ['accepted', 'made'].includes(order.value.status)) {
       deliverys.value = await userApi.dispatchStaff('delivery')
     }
   } finally {

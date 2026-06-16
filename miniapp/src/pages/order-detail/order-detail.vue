@@ -86,7 +86,7 @@
         <button v-if="isRefunding" class="action-btn disabled" disabled>退款中</button>
         <button v-if="isRefunded" class="action-btn disabled" disabled>已退款</button>
         <button v-if="canReorder" @click="handleReorder" class="action-btn">再次下单</button>
-        <button v-if="userStore.user?.role === 'delivery' && ['making', 'made'].includes(order.status)" @click="handleDeliveryStart" class="action-btn">去配送</button>
+        <button v-if="userStore.user?.role === 'delivery' && order.status === 'made'" @click="handleDeliveryStart" class="action-btn">去配送</button>
         <button v-if="userStore.user?.role === 'delivery' && order.status === 'delivering'" @click="handleDeliveryComplete" class="action-btn primary">确认送达</button>
       </view>
     </template>
@@ -108,7 +108,7 @@ const reviews = ref<any[]>([])
 const reviewForm = ref({ rating: 5, content: '' })
 
 const statusMap: Record<string, string> = {
-  pending: '待支付', accepted: '待配送', making: '制作中',
+  pending: '待支付', accepted: '待配送',
   made: '待配送', delivering: '配送中', delivered: '待确认收货', completed: '已完成', cancelled: '已取消',
 }
 const paymentStatusMap: Record<string, string> = {
@@ -131,7 +131,7 @@ const canOperate = computed(() => {
   if (!order.value || !userStore.user) return false
   const role = userStore.user.role
   if (role === 'merchant' && ['pending', 'completed', 'delivered', 'cancelled'].includes(order.value.status)) return true
-  if (role === 'delivery' && ['making', 'made', 'delivering'].includes(order.value.status)) return true
+  if (role === 'delivery' && ['made', 'delivering'].includes(order.value.status)) return true
   return false
 })
 

@@ -13,7 +13,7 @@ export class DashboardService {
       todayOrders,
       todayAmount,
       pendingOrders,
-      makingOrders,
+      readyOrders,
       deliveringOrders,
       totalUsers,
     ] = await Promise.all([
@@ -23,7 +23,7 @@ export class DashboardService {
         _sum: { totalAmount: true },
       }),
       this.prisma.order.count({ where: { status: 'pending' } }),
-      this.prisma.order.count({ where: { status: 'making' } }),
+      this.prisma.order.count({ where: { status: { in: ['accepted', 'made'] } } }),
       this.prisma.order.count({ where: { status: 'delivering' } }),
       this.prisma.user.count({ where: { status: 1 } }),
     ]);
@@ -32,7 +32,7 @@ export class DashboardService {
       todayOrders,
       todayAmount: todayAmount._sum.totalAmount || 0,
       pendingOrders,
-      makingOrders,
+      readyOrders,
       deliveringOrders,
       totalUsers,
     };

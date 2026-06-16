@@ -13,7 +13,7 @@
             <text class="order-status">{{ statusMap[o.status] || o.status }}</text>
           </view>
           <view class="order-actions">
-            <button v-if="['making', 'made'].includes(o.status)" @click.stop="handleDeliveryStart(o.id)" class="mini-btn">去配送</button>
+            <button v-if="o.status === 'made'" @click.stop="handleDeliveryStart(o.id)" class="mini-btn">去配送</button>
             <button v-if="o.status === 'delivering'" @click.stop="handleDeliveryComplete(o.id)" class="mini-btn primary">确认送达</button>
           </view>
         </view>
@@ -58,7 +58,6 @@ const roleLabel = computed(() => roleMap[userStore.user?.role || ''] || '')
 const statusMap: Record<string, string> = {
   pending: '待支付',
   accepted: '待配送',
-  making: '待配送',
   made: '待配送',
   delivering: '配送中',
   delivered: '已完成',
@@ -72,7 +71,7 @@ async function fetchOrders() {
     return
   }
   const data = await orderApi.list({ pageSize: 50 })
-  orders.value = (data.list || []).filter((o: any) => ['making', 'made', 'delivering'].includes(o.status))
+  orders.value = (data.list || []).filter((o: any) => ['made', 'delivering'].includes(o.status))
 }
 
 function goDetail(id: number) {

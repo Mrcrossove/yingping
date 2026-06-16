@@ -57,7 +57,7 @@ import { dashboardApi } from '@/api/index'
 
 use([CanvasRenderer, BarChart, PieChart, TooltipComponent, LegendComponent, GridComponent])
 
-const stats = ref({ todayOrders: 0, todayAmount: 0, pendingOrders: 0, makingOrders: 0, deliveringOrders: 0, totalUsers: 0 })
+const stats = ref({ todayOrders: 0, todayAmount: 0, pendingOrders: 0, readyOrders: 0, deliveringOrders: 0, totalUsers: 0 })
 const trend = ref<any[]>([])
 const earningsData = ref<any>({ byRole: [], totalPaid: 0, totalPending: 0 })
 const lowStock = ref<any[]>([])
@@ -66,7 +66,7 @@ const cards = computed(() => [
   { label: '今日订单', value: stats.value.todayOrders, color: '#409EFF' },
   { label: '今日金额', value: '¥' + Number(stats.value.todayAmount).toFixed(2), color: '#67C23A' },
   { label: '待处理', value: stats.value.pendingOrders, color: '#E6A23C' },
-  { label: '制作中', value: stats.value.makingOrders, color: '#F56C6C' },
+  { label: '待配送', value: stats.value.readyOrders, color: '#F56C6C' },
   { label: '配送中', value: stats.value.deliveringOrders, color: '#909399' },
   { label: '总用户数', value: stats.value.totalUsers, color: '#337ECC' },
 ])

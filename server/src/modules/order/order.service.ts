@@ -201,7 +201,7 @@ export class OrderService {
 
   async deliveryStartDelivering(orderId: number, deliveryId: number) {
     const order = await this.findOne(orderId);
-    if (!['making', 'made'].includes(order.status)) throw new BadRequestException('订单状态不正确，请等待派单配送');
+    if (order.status !== 'made') throw new BadRequestException('订单状态不正确，请等待派单配送');
     if (order.deliveryId !== deliveryId) throw new ForbiddenException('无权操作该配送任务');
     if (order.flows?.some((flow: any) => flow.action === '开始配送')) return order;
 
@@ -227,7 +227,7 @@ export class OrderService {
 
   async dispatchToDelivery(orderId: number, deliveryId: number, operator: { id: number; role: Role }) {
     const order = await this.findOne(orderId);
-    if (!['accepted', 'making', 'made'].includes(order.status)) throw new BadRequestException('订单状态不正确，当前只能派发待配送订单');
+    if (!['accepted', 'made'].includes(order.status)) throw new BadRequestException('订单状态不正确，当前只能派发待配送订单');
     const operatorId = operator.id;
 
     const updated = await this.prisma.order.update({

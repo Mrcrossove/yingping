@@ -169,7 +169,6 @@ model Order {
 enum OrderStatus {
   pending
   accepted
-  making
   made
   delivering
   delivered

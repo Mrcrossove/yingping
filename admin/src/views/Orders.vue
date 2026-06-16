@@ -168,7 +168,7 @@ const staffRoleOptions = computed(() => {
 })
 
 const statusMap: Record<string, string> = {
-  pending: '待支付', accepted: '待配送', making: '待配送',
+  pending: '待支付', accepted: '待配送',
   made: '待配送', delivering: '配送中', delivered: '已送达', completed: '已完成', cancelled: '已取消',
 }
 const settlementTypeMap: Record<string, string> = {
@@ -192,7 +192,7 @@ const paymentStatusMap: Record<string, string> = {
 }
 
 function statusTagType(status: string) {
-  const map: Record<string, string> = { pending: 'warning', accepted: 'info', making: '', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
+  const map: Record<string, string> = { pending: 'warning', accepted: 'info', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
   return map[status] || ''
 }
 
@@ -284,7 +284,7 @@ const batchVisible = ref(false)
 const batchDeliveryId = ref<number | null>(null)
 const deliverys = ref<any[]>([])
 
-function isSelectable(row: any) { return canDispatch.value && ['accepted', 'making', 'made'].includes(row.status) }
+function isSelectable(row: any) { return canDispatch.value && ['accepted', 'made'].includes(row.status) }
 function onSelectionChange(val: any[]) { selectedOrders.value = val }
 
 async function showBatchDialog() {
