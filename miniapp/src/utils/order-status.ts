@@ -4,7 +4,7 @@ export const statusMap: Record<string, string> = {
   making: '制作中',
   made: '待配送',
   delivering: '配送中',
-  delivered: '已送达',
+  delivered: '待确认收货',
   completed: '已完成',
   cancelled: '已取消',
 }

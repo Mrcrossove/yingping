@@ -35,6 +35,7 @@ export const orderApi = {
   dispatchToDelivery: (id: number, deliveryId: number) => post(`/orders/${id}/dispatch-delivery`, { deliveryId }),
   deliveryStart: (id: number) => post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => post(`/orders/${id}/delivery-complete`),
+  merchantConfirmReceipt: (id: number) => post(`/orders/${id}/merchant-confirm-receipt`),
   cancel: (id: number) => post(`/orders/${id}/cancel`),
 }
 

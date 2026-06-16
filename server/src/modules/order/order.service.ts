@@ -262,7 +262,7 @@ export class OrderService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.order.updateMany({
         where: { id: orderId, status: 'delivering', deliveryId },
-        data: { status: 'completed' },
+        data: { status: 'delivered' },
       });
       if (changed.count !== 1) throw new BadRequestException('订单状态已变更，请刷新后重试');
 
@@ -272,7 +272,59 @@ export class OrderService {
           fromRole: 'delivery',
           toRole: 'merchant',
           operatorId: deliveryId,
-          action: '配送完成已送达，订单完结',
+          action: '配送员确认已送达，等待商户确认收货',
+        },
+      });
+
+      return tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { product: true } },
+          merchant: { select: { id: true, realName: true, phone: true, merchantProfile: true } },
+          salesperson: { select: { id: true, realName: true, phone: true } },
+          maker: { select: { id: true, realName: true, phone: true } },
+          delivery: { select: { id: true, realName: true, phone: true } },
+          payment: true,
+          flows: {
+            include: { operator: { select: { id: true, realName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      });
+    });
+
+    this.wsGateway.notifyOrderStatusChange(orderId, 'delivered', '订单已送达，等待商户确认收货');
+    if (updated) {
+      await this.safeNotifyUsers([updated.merchantId], {
+        title: '订单已送达，请确认收货',
+        content: `订单 ${updated.orderNo} 已由配送员确认送达，请核对后确认收货`,
+        type: 'order',
+        targetPath: `/orders/${updated.id}`,
+      });
+    }
+
+    return updated;
+  }
+
+  async merchantConfirmReceipt(orderId: number, merchantId: number) {
+    const order = await this.findOne(orderId);
+    if (order.merchantId !== merchantId) throw new ForbiddenException('无权确认该订单');
+    if (order.status !== 'delivered') throw new BadRequestException('订单状态不正确，只有已送达订单可以确认收货');
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, status: 'delivered', merchantId },
+        data: { status: 'completed' },
+      });
+      if (changed.count !== 1) throw new BadRequestException('订单状态已变更，请刷新后重试');
+
+      await tx.orderFlow.create({
+        data: {
+          orderId,
+          fromRole: 'merchant',
+          toRole: 'admin',
+          operatorId: merchantId,
+          action: '商户确认收货，订单完结',
         },
       });
 
@@ -294,15 +346,7 @@ export class OrderService {
     });
 
     await this.calculateCommissions(orderId);
-    this.wsGateway.notifyOrderStatusChange(orderId, 'completed', '订单已完成，收益已结算');
-    if (updated) {
-      await this.safeNotifyUsers([updated.merchantId], {
-        title: '订单已送达',
-        content: `订单 ${updated.orderNo} 已配送完成`,
-        type: 'order',
-        targetPath: `/orders/${updated.id}`,
-      });
-    }
+    this.wsGateway.notifyOrderStatusChange(orderId, 'completed', '商户已确认收货，收益已结算');
 
     return updated;
   }
@@ -405,7 +449,7 @@ export class OrderService {
       where: { id: orderId },
       include: { items: { include: { product: true } } },
     });
-    if (!order || (order.status !== 'delivered' && order.status !== 'completed')) return;
+    if (!order || order.status !== 'completed') return;
 
     const existing = await this.prisma.earning.count({
       where: { orderId, type: 'commission' },

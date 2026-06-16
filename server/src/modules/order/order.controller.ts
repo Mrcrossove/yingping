@@ -53,7 +53,14 @@ export class OrderController {
   @Roles('delivery')
   async deliveryComplete(@Param('id') id: string, @Request() req) {
     const data = await this.orderService.deliveryComplete(+id, req.user.id);
-    return ApiResult.success(data, '配送完成');
+    return ApiResult.success(data, '已送达，等待商户确认收货');
+  }
+
+  @Post(':id/merchant-confirm-receipt')
+  @Roles('merchant')
+  async merchantConfirmReceipt(@Param('id') id: string, @Request() req) {
+    const data = await this.orderService.merchantConfirmReceipt(+id, req.user.id);
+    return ApiResult.success(data, '确认收货成功');
   }
 
   @Post(':id/cancel')

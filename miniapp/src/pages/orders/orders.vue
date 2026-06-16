@@ -75,6 +75,7 @@
             <template v-if="role === 'merchant'">
               <view v-if="canCancel(order)" class="btn outline danger" @click="handleAction(order, 'cancel')">取消订单</view>
               <view v-if="canRefund(order)" class="btn danger" @click="handleAction(order, 'refund')">申请退款</view>
+              <view v-if="canConfirmReceipt(order)" class="btn success" @click="handleAction(order, 'confirm-receipt')">确认收货</view>
               <view v-if="isCompletedOrder(order)" class="btn outline" @click="handleAction(order, 'reorder')">再次下单</view>
               <view v-if="order.status === 'pending'" class="btn outline" @click="callCustomerService">联系客服</view>
             </template>
@@ -197,8 +198,12 @@ function canRefund(order: any) {
   return ['pending', 'made'].includes(order.status) && order.paymentStatus === 'paid'
 }
 
+function canConfirmReceipt(order: any) {
+  return order.status === 'delivered'
+}
+
 function isCompletedOrder(order: any) {
-  return ['delivered', 'completed'].includes(order.status)
+  return order.status === 'completed'
 }
 
 async function fetchPublicSettings() {
@@ -213,7 +218,7 @@ async function fetchPublicSettings() {
 function handleAction(order: any, action: string) {
   const titles: Record<string, string> = {
     'delivery-start': '开始配送', 'delivery-done': '确认送达', reorder: '再次下单',
-    cancel: '取消订单', refund: '申请退款',
+    cancel: '取消订单', refund: '申请退款', 'confirm-receipt': '确认收货',
   }
   confirmDialog.show = true
   confirmDialog.title = titles[action] || action
@@ -225,6 +230,7 @@ function handleAction(order: any, action: string) {
     else if (action === 'delivery-done') await orderApi.deliveryComplete(order.id)
     else if (action === 'cancel') await orderApi.cancel(order.id)
     else if (action === 'refund') await paymentApi.requestRefund(order.id)
+    else if (action === 'confirm-receipt') await orderApi.merchantConfirmReceipt(order.id)
     else if (action === 'reorder') {
       order.items.forEach((item: any) => {
         cartStore.addItem({

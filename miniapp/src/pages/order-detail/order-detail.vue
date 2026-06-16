@@ -64,6 +64,7 @@
       <view v-if="canOperate" class="action-bar">
         <button v-if="canMerchantCancel" @click="handleCancel" class="action-btn danger">取消订单</button>
         <button v-if="canRequestRefund" @click="handleRequestRefund" class="action-btn danger">申请退款</button>
+        <button v-if="canConfirmReceipt" @click="handleConfirmReceipt" class="action-btn success">确认收货</button>
         <button v-if="canPay" @click="handlePay" class="action-btn primary">去支付</button>
         <button v-if="isRefunding" class="action-btn disabled" disabled>退款中</button>
         <button v-if="isRefunded" class="action-btn disabled" disabled>已退款</button>
@@ -91,7 +92,7 @@ const reviewForm = ref({ rating: 5, content: '' })
 
 const statusMap: Record<string, string> = {
   pending: '待支付', accepted: '待配送', making: '制作中',
-  made: '待配送', delivering: '配送中', delivered: '已完成', completed: '已完结', cancelled: '已取消',
+  made: '待配送', delivering: '配送中', delivered: '待确认收货', completed: '已完成', cancelled: '已取消',
 }
 const paymentStatusMap: Record<string, string> = {
   pending: '待支付',
@@ -126,16 +127,17 @@ const isRefunding = computed(() => paymentStatus.value === 'refunding')
 const isRefunded = computed(() => paymentStatus.value === 'refunded')
 const canMerchantCancel = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && !isPaid.value && !isRefunding.value && !isRefunded.value)
 const canRequestRefund = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'pending' && isPaid.value)
+const canConfirmReceipt = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'delivered')
 const canPay = computed(() =>
   userStore.user?.role === 'merchant'
   && order.value?.status === 'pending'
   && order.value?.settlementType !== 'monthly'
   && ['', 'pending', 'failed'].includes(paymentStatus.value)
 )
-const canReorder = computed(() => userStore.user?.role === 'merchant' && ['completed', 'delivered'].includes(order.value?.status))
+const canReorder = computed(() => userStore.user?.role === 'merchant' && order.value?.status === 'completed')
 const canReview = computed(() =>
   userStore.user?.role === 'merchant'
-  && ['completed', 'delivered'].includes(order.value?.status)
+  && order.value?.status === 'completed'
   && reviews.value.length === 0
 )
 
@@ -232,6 +234,12 @@ async function handleDeliveryComplete() {
   uni.showToast({ title: '已送达', icon: 'success' })
   await refreshOrder()
 }
+
+async function handleConfirmReceipt() {
+  await orderApi.merchantConfirmReceipt(order.value.id)
+  uni.showToast({ title: '确认收货成功', icon: 'success' })
+  await refreshOrder()
+}
 </script>
 
 <style scoped>
@@ -251,6 +259,7 @@ async function handleDeliveryComplete() {
 .action-bar { margin-top: 20px; }
 .action-btn { background: #2f8a5a; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 16px; margin-bottom: 8px; display: block; width: 100%; }
 .action-btn.primary { background: #67C23A; }
+.action-btn.success { background: #2f8a5a; }
 .action-btn.danger { background: #f56c6c; }
 .action-btn.disabled { background: #c0c4cc; color: #fff; }
 .rating-row { display: flex; gap: 6px; margin-bottom: 10px; }
