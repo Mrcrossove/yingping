@@ -11,10 +11,10 @@
 
     <!-- 状态筛选 Tab -->
     <scroll-view scroll-x class="status-tabs" :show-scrollbar="false">
-      <view v-for="(label, key) in tabs" :key="key"
-        :class="['tab-item', { active: filterStatus === key }]"
-        @click="filterStatus = filterStatus === key ? '' : key">
-        {{ label }}
+      <view v-for="tab in tabs" :key="tab.value"
+        :class="['tab-item', { active: filterStatus === tab.value }]"
+        @click="filterStatus = filterStatus === tab.value ? '' : tab.value">
+        {{ tab.label }}
       </view>
     </scroll-view>
 
@@ -121,7 +121,14 @@ const orders = ref<any[]>([])
 const loading = ref(false)
 const customerServicePhone = ref('')
 
-const tabs = statusMap
+const tabs = [
+  { label: '待支付', value: 'pending' },
+  { label: '待配送', value: 'ready' },
+  { label: '配送中', value: 'delivering' },
+  { label: '待确认收货', value: 'delivered' },
+  { label: '已完成', value: 'completed' },
+  { label: '已取消', value: 'cancelled' },
+]
 const paymentStatusMap: Record<string, string> = {
   pending: '待支付',
   paid: '已支付',
@@ -143,15 +150,14 @@ const stats = computed(() => {
   orders.value.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1 })
   return [
     { label: '待支付', count: counts.pending || 0, color: '#E6A23C', status: 'pending' },
-    { label: '待配送', count: (counts.accepted || 0) + (counts.made || 0), color: '#2f8a5a', status: 'made' },
+    { label: '待配送', count: (counts.accepted || 0) + (counts.made || 0), color: '#2f8a5a', status: 'ready' },
     { label: '配送中', count: counts.delivering || 0, color: '#67C23A', status: 'delivering' },
     { label: '已完成', count: (counts.delivered || 0) + (counts.completed || 0), color: '#909399', status: 'completed' },
   ]
 })
 
 const filteredOrders = computed(() => {
-  if (filterStatus.value === 'completed') return orders.value.filter(o => ['delivered', 'completed'].includes(o.status))
-  if (filterStatus.value === 'made') return orders.value.filter(o => ['accepted', 'made'].includes(o.status))
+  if (filterStatus.value === 'ready') return orders.value.filter(o => ['accepted', 'made'].includes(o.status))
   if (filterStatus.value) return orders.value.filter(o => o.status === filterStatus.value)
   return orders.value
 })
