@@ -65,6 +65,12 @@ const router = createRouter({
           meta: { title: '商户看板', icon: 'Shop' },
         },
         {
+          path: 'feedback',
+          name: 'Feedback',
+          component: () => import('@/views/Feedback.vue'),
+          meta: { title: '反馈管理', icon: 'ChatDotRound' },
+        },
+        {
           path: 'commissions',
           name: 'Commissions',
           component: () => import('@/views/Commissions.vue'),

@@ -68,6 +68,11 @@ export const reviewApi = {
   my: (params?: any) => get('/reviews/my', params),
 }
 
+export const feedbackApi = {
+  create: (data: any) => post('/feedback', data),
+  my: (params?: any) => get('/feedback/my', params),
+}
+
 export const earningApi = {
   myEarnings: (params?: any) => get('/earnings/my', params),
 }

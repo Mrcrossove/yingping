@@ -54,6 +54,11 @@ export const paymentApi = {
   refund: (orderId: number) => request.post(`/payments/refund/${orderId}`),
 }
 
+export const feedbackApi = {
+  list: (params?: any) => request.get('/feedback', { params }),
+  updateStatus: (id: number, data: any) => request.put(`/feedback/${id}/status`, data),
+}
+
 export const dashboardApi = {
   stats: () => request.get('/dashboard/stats'),
   trend: (days?: number) => request.get('/dashboard/trend', { params: { days } }),

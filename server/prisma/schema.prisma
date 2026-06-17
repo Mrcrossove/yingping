@@ -37,6 +37,7 @@ model User {
   notifications      Notification[]
   addresses           Address[]
   reviews             Review[]
+  feedbacks           Feedback[]         @relation("FeedbackMerchant")
   commissionRules     CommissionRule[]
 
   @@map("users")
@@ -376,6 +377,44 @@ enum MerchantLeadStatus {
   pending
   followed
   converted
+  rejected
+}
+
+model Feedback {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @map("user_id")
+  category      FeedbackCategory @default(suggestion)
+  title         String           @db.VarChar(100)
+  content       String           @db.Text
+  contactPhone  String?          @map("contact_phone") @db.VarChar(20)
+  status        FeedbackStatus   @default(pending)
+  reply         String?          @db.Text
+  processedById Int?             @map("processed_by_id")
+  processedAt   DateTime?        @map("processed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  merchant User @relation("FeedbackMerchant", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+  @@map("feedbacks")
+}
+
+enum FeedbackCategory {
+  suggestion
+  product
+  service
+  system
+  other
+}
+
+enum FeedbackStatus {
+  pending
+  processing
+  resolved
   rejected
 }
 

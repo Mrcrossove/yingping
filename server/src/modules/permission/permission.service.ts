@@ -39,6 +39,7 @@ export class PermissionService {
       { name: '提现审核', code: 'withdrawal:manage', description: '审核提现申请' },
       { name: '数据导出', code: 'export:manage', description: '导出Excel报表' },
       { name: '推广管理', code: 'promotion:manage', description: '管理推广码和绑定' },
+      { name: '反馈管理', code: 'feedback:manage', description: '查看和处理商户反馈建议' },
       { name: '查看财务数据', code: 'finance:view', description: '查看财务收益报表' },
       { name: '操作日志', code: 'audit:view', description: '查看系统操作日志' },
       { name: '系统设置', code: 'setting:manage', description: '配置客服电话等系统参数' },
