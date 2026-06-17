@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div class="orders-page">
     <el-card>
       <template #header>
         <div class="card-header">
           <span>订单管理</span>
         </div>
       </template>
-      <div class="filter-bar">
+      <div v-show="!isMobile" class="filter-bar">
         <el-input v-model="keyword" placeholder="订单号" clearable class="filter-item keyword-input" @keyup.enter="handleSearch" />
         <el-input
           v-model="settlementMerchantName"
@@ -65,10 +65,39 @@
         <el-button @click="handleReset">重置</el-button>
         <el-button v-if="canExport" type="success" @click="handleExport">导出Excel</el-button>
       </div>
+      <div v-if="isMobile" class="mobile-filter-bar">
+        <el-input
+          v-model="keyword"
+          placeholder="订单号"
+          clearable
+          class="mobile-filter-keyword"
+          @keyup.enter="handleSearch"
+        />
+        <el-select v-model="filterStatus" placeholder="状态" clearable class="mobile-filter-status" @change="handleSearch">
+          <el-option v-for="(v, k) in statusMap" :key="k" :label="v" :value="k" />
+        </el-select>
+        <el-button type="primary" class="mobile-filter-button" @click="handleSearch">查询</el-button>
+        <el-button class="mobile-filter-button" @click="handleReset">重置</el-button>
+        <el-button
+          v-if="hasMobileAdvancedFilters"
+          class="mobile-filter-more"
+          @click="mobileFilterVisible = true"
+        >
+          更多筛选<span v-if="mobileAdvancedFilterCount > 0">({{ mobileAdvancedFilterCount }})</span>
+        </el-button>
+      </div>
       <div style="margin-bottom: 12px;" v-if="canDispatch && selectedOrders.length > 0">
         <el-button type="warning" @click="showBatchDialog">批量派配送员 ({{ selectedOrders.length }} 单)</el-button>
       </div>
-      <el-table :data="orders" v-loading="loading" stripe @selection-change="onSelectionChange" ref="orderTable">
+      <el-table
+        v-show="!isMobile"
+        :data="orders"
+        v-loading="loading"
+        stripe
+        @selection-change="onSelectionChange"
+        ref="orderTable"
+        class="orders-table"
+      >
         <el-table-column v-if="canDispatch" type="selection" width="40" :selectable="isSelectable" />
         <el-table-column prop="orderNo" label="订单编号" width="200" />
         <el-table-column prop="merchant.realName" label="商户账号" width="110" />
@@ -111,11 +140,82 @@
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="$router.push(`/orders/${row.id}`)">详情</el-button>
+            <el-button type="primary" link @click="goDetail(row.id)">详情</el-button>
             <el-button v-if="canEditSettlementMerchant" type="primary" link @click="showSettlementMerchantDialog(row)">编辑结算商户</el-button>
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="isMobile" v-loading="loading" class="mobile-order-list">
+        <div v-if="orders.length === 0" class="mobile-empty">暂无订单</div>
+        <article v-for="row in orders" :key="row.id" class="mobile-order-card" @click="goDetail(row.id)">
+          <div class="mobile-card-head">
+            <div class="mobile-card-no">
+              <strong>{{ row.orderNo }}</strong>
+              <span>{{ new Date(row.createdAt).toLocaleString() }}</span>
+            </div>
+            <el-tag :type="statusTagType(row.status)">{{ statusMap[row.status] }}</el-tag>
+          </div>
+          <div class="mobile-card-grid">
+            <div class="mobile-meta-item">
+              <label>商品</label>
+              <span>{{ orderItemsText(row) }}</span>
+            </div>
+            <div class="mobile-meta-item">
+              <label>金额</label>
+              <span>¥{{ Number(row.totalAmount).toFixed(2) }}</span>
+            </div>
+            <div class="mobile-meta-item">
+              <label>商户账号</label>
+              <span>{{ row.merchant?.realName || '-' }}</span>
+            </div>
+            <div class="mobile-meta-item">
+              <label>配送员</label>
+              <span>{{ row.delivery?.realName || '-' }}</span>
+            </div>
+            <div class="mobile-meta-item">
+              <label>结算商户</label>
+              <span>{{ row.settlementMerchantName || row.merchant?.realName || '-' }}</span>
+            </div>
+            <div class="mobile-meta-item">
+              <label>支付/结算</label>
+              <span>{{ row.settlementType === 'monthly' ? (settlementStatusMap[row.settlementStatus] || row.settlementStatus) : paymentStatusText(row) }}</span>
+            </div>
+          </div>
+          <div class="mobile-card-actions" @click.stop>
+            <el-button type="primary" plain @click="goDetail(row.id)">详情</el-button>
+            <el-button
+              v-if="canStartDelivery(row)"
+              type="primary"
+              @click="handleRowDeliveryStart(row)"
+            >
+              开始配送
+            </el-button>
+            <el-button
+              v-if="canCompleteDelivery(row)"
+              type="success"
+              @click="handleRowDeliveryComplete(row)"
+            >
+              配送完成
+            </el-button>
+            <el-button
+              v-if="canEditSettlementMerchant"
+              type="primary"
+              plain
+              @click="showSettlementMerchantDialog(row)"
+            >
+              编辑结算商户
+            </el-button>
+            <el-button
+              v-if="canMobileDispatch(row)"
+              type="warning"
+              plain
+              @click="showSingleDispatchDialog(row)"
+            >
+              派单
+            </el-button>
+          </div>
+        </article>
+      </div>
       <div style="margin-top: 16px; text-align: right;">
         <el-pagination
           v-model:current-page="page" :page-size="pageSize" :total="total"
@@ -139,6 +239,21 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="singleDispatchVisible" title="派单给配送员" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="订单号">{{ currentDispatchOrder?.orderNo || '-' }}</el-form-item>
+        <el-form-item label="配送员">
+          <el-select v-model="singleDeliveryId" placeholder="选择配送员" style="width:100%">
+            <el-option v-for="d in singleDeliveryOptions" :key="d.id" :label="d.realName" :value="d.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="singleDispatchVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!singleDeliveryId" @click="handleSingleDispatch">确认派单</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="settlementMerchantDialogVisible" title="编辑结算商户" width="460px">
       <el-form label-width="100px">
         <el-form-item label="订单号">{{ currentOrder?.orderNo }}</el-form-item>
@@ -157,18 +272,89 @@
         <el-button type="primary" :loading="settlementMerchantSaving" @click="handleSaveSettlementMerchant">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer
+      v-model="mobileFilterVisible"
+      title="更多筛选"
+      direction="btt"
+      size="82%"
+      class="mobile-filter-drawer"
+    >
+      <div class="mobile-drawer-form">
+        <el-input
+          v-model="settlementMerchantName"
+          placeholder="结算商户"
+          clearable
+          class="mobile-drawer-control"
+        />
+        <el-select v-model="settlementType" placeholder="结算方式" clearable class="mobile-drawer-control">
+          <el-option label="微信支付" value="wechat" />
+          <el-option label="月结" value="monthly" />
+        </el-select>
+        <el-select v-model="settlementStatus" placeholder="结算状态" clearable class="mobile-drawer-control">
+          <el-option v-for="(v, k) in settlementStatusMap" :key="k" :label="v" :value="k" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          class="mobile-drawer-control mobile-date-range"
+        />
+        <template v-if="canFilterStaff">
+          <el-select
+            v-model="staffRole"
+            placeholder="人员类型"
+            clearable
+            class="mobile-drawer-control"
+            @change="handleStaffRoleChange"
+          >
+            <el-option v-for="item in staffRoleOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+          <el-select
+            v-model="staffId"
+            placeholder="选择人员"
+            clearable
+            filterable
+            :disabled="!staffRole"
+            :loading="staffLoading"
+            class="mobile-drawer-control"
+          >
+            <el-option
+              v-for="item in staffOptions"
+              :key="item.id"
+              :label="item.phone ? `${item.realName} (${item.phone})` : item.realName"
+              :value="item.id"
+            />
+          </el-select>
+        </template>
+      </div>
+      <template #footer>
+        <div class="mobile-drawer-actions">
+          <el-button @click="handleReset">重置</el-button>
+          <el-button v-if="canExport" type="success" @click="handleMobileExport">导出Excel</el-button>
+          <el-button type="primary" @click="handleMobileAdvancedSearch">应用筛选</el-button>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { orderApi, downloadApi, userApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
 import { hasPermission } from '@/utils/access'
 
+const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const isMobile = ref(false)
+const mobileFilterVisible = ref(false)
 const orders = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -189,6 +375,16 @@ const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPe
 const canEditSettlementMerchant = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:manage'))
 const showStaffColumns = computed(() => ['boss', 'admin'].includes(role.value))
 const canFilterStaff = computed(() => ['boss', 'admin'].includes(role.value))
+const hasMobileAdvancedFilters = computed(() => ['boss', 'admin'].includes(role.value))
+const mobileAdvancedFilterCount = computed(() => {
+  let count = 0
+  if (settlementMerchantName.value.trim()) count += 1
+  if (settlementType.value) count += 1
+  if (settlementStatus.value) count += 1
+  if (dateRange.value?.[0] || dateRange.value?.[1]) count += 1
+  if (staffRole.value || staffId.value) count += 1
+  return count
+})
 const staffRoleOptions = computed(() => {
   if (['boss', 'admin'].includes(role.value)) {
     return [
@@ -223,6 +419,10 @@ const paymentStatusMap: Record<string, string> = {
   failed: '支付失败',
 }
 
+function syncViewport() {
+  isMobile.value = window.innerWidth <= 768
+}
+
 function statusTagType(status: string) {
   const map: Record<string, string> = { pending: 'warning', accepted: 'info', made: '', delivering: '', delivered: 'success', completed: 'success', cancelled: 'danger' }
   return map[status] || ''
@@ -232,6 +432,26 @@ function paymentStatusText(row: any) {
   if (row.settlementType === 'monthly') return '-'
   const status = row.payment?.status
   return status ? paymentStatusMap[status] || status : '未创建'
+}
+
+function orderItemsText(row: any) {
+  return (row.items || []).map((item: any) => `${item.product?.name || '-'} x${item.quantity}`).join(', ')
+}
+
+function canStartDelivery(row: any) {
+  return role.value === 'delivery' && row.status === 'made'
+}
+
+function canCompleteDelivery(row: any) {
+  return role.value === 'delivery' && row.status === 'delivering'
+}
+
+function canMobileDispatch(row: any) {
+  return isMobile.value && canDispatch.value && ['accepted', 'made'].includes(row.status)
+}
+
+function goDetail(id: number) {
+  router.push(`/orders/${id}`)
 }
 
 function buildQueryParams() {
@@ -268,6 +488,11 @@ async function fetchOrders() {
 function handleSearch() {
   page.value = 1
   fetchOrders()
+}
+
+function handleMobileAdvancedSearch() {
+  mobileFilterVisible.value = false
+  handleSearch()
 }
 
 function handleReset() {
@@ -313,10 +538,19 @@ async function handleExport() {
   ElMessage.success('导出成功')
 }
 
+async function handleMobileExport() {
+  mobileFilterVisible.value = false
+  await handleExport()
+}
+
 const selectedOrders = ref<any[]>([])
 const batchVisible = ref(false)
 const batchDeliveryId = ref<number | null>(null)
 const deliverys = ref<any[]>([])
+const singleDispatchVisible = ref(false)
+const currentDispatchOrder = ref<any | null>(null)
+const singleDeliveryId = ref<number | null>(null)
+const singleDeliveryOptions = ref<any[]>([])
 const settlementMerchantDialogVisible = ref(false)
 const settlementMerchantSaving = ref(false)
 const settlementMerchantFormName = ref('')
@@ -338,6 +572,37 @@ async function handleBatchDispatch() {
   ElMessage.success('批量派单完成')
   batchVisible.value = false
   selectedOrders.value = []
+  fetchOrders()
+}
+
+async function showSingleDispatchDialog(row: any) {
+  if (!canDispatch.value) return
+  currentDispatchOrder.value = row
+  singleDeliveryId.value = row.deliveryId || null
+  singleDeliveryOptions.value = await userApi.dispatchStaff('delivery')
+  singleDispatchVisible.value = true
+}
+
+async function handleSingleDispatch() {
+  if (!currentDispatchOrder.value || !singleDeliveryId.value) return
+  await orderApi.dispatchToDelivery(currentDispatchOrder.value.id, singleDeliveryId.value)
+  ElMessage.success('已派单给配送员')
+  singleDispatchVisible.value = false
+  currentDispatchOrder.value = null
+  singleDeliveryId.value = null
+  fetchOrders()
+}
+
+async function handleRowDeliveryStart(row: any) {
+  await orderApi.deliveryStart(row.id)
+  ElMessage.success('已开始配送')
+  fetchOrders()
+}
+
+async function handleRowDeliveryComplete(row: any) {
+  await ElMessageBox.confirm('确认该订单已经配送完成?', '提示', { type: 'warning' })
+  await orderApi.deliveryComplete(row.id)
+  ElMessage.success('配送完成')
   fetchOrders()
 }
 
@@ -366,10 +631,21 @@ async function handleSaveSettlementMerchant() {
   }
 }
 
-onMounted(fetchOrders)
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+  fetchOrders()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewport)
+})
 </script>
 
 <style scoped>
+.orders-page {
+  min-width: 0;
+}
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .filter-item { flex-shrink: 0; }
@@ -381,4 +657,130 @@ onMounted(fetchOrders)
 .date-range { width: 260px; }
 .staff-role { width: 120px; }
 .staff-select { width: 210px; }
+.mobile-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mobile-order-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+.mobile-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.mobile-card-no {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-card-no strong {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-all;
+}
+.mobile-card-no span {
+  color: #6b7280;
+  font-size: 12px;
+}
+.mobile-card-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mobile-meta-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-meta-item label {
+  color: #6b7280;
+  font-size: 12px;
+}
+.mobile-meta-item span {
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.mobile-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mobile-card-actions :deep(.el-button) {
+  margin-left: 0;
+}
+.mobile-empty {
+  padding: 28px 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .orders-page :deep(.el-card__body) {
+    overflow-x: visible;
+  }
+  .mobile-card-grid {
+    grid-template-columns: 1fr;
+  }
+  .filter-bar {
+    display: none;
+  }
+  .mobile-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 104px;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mobile-filter-keyword,
+  .mobile-filter-status,
+  .mobile-filter-more {
+    width: 100%;
+  }
+  .mobile-filter-button {
+    width: 100%;
+    margin-left: 0;
+  }
+  .mobile-filter-more {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+  .mobile-card-actions :deep(.el-button) {
+    min-height: 36px;
+    flex: 1 1 calc(50% - 4px);
+  }
+}
+
+.mobile-drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mobile-drawer-control {
+  width: 100%;
+}
+.mobile-date-range {
+  max-width: 100%;
+}
+.mobile-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.mobile-drawer-actions :deep(.el-button) {
+  margin-left: 0;
+}
 </style>
