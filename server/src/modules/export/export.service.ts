@@ -16,6 +16,7 @@ export class ExportService {
     deliveryId?: string;
     settlementType?: string;
     settlementStatus?: string;
+    settlementMerchantName?: string;
   }) {
     const where: any = {};
     if (query.status) where.status = query.status;
@@ -24,6 +25,7 @@ export class ExportService {
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
     if (query.settlementType) where.settlementType = query.settlementType;
     if (query.settlementStatus) where.settlementStatus = query.settlementStatus;
+    if (query.settlementMerchantName) where.settlementMerchantName = { contains: query.settlementMerchantName.trim() };
     if (query.startDate || query.endDate) {
       where.createdAt = {};
       if (query.startDate) where.createdAt.gte = new Date(query.startDate);
@@ -46,7 +48,8 @@ export class ExportService {
 
     sheet.columns = [
       { header: '订单编号', key: 'orderNo', width: 20 },
-      { header: '商户', key: 'merchant', width: 15 },
+      { header: '商户账号', key: 'merchant', width: 15 },
+      { header: '结算商户', key: 'settlementMerchantName', width: 20 },
       { header: '商品', key: 'product', width: 20 },
       { header: '数量', key: 'quantity', width: 10 },
       { header: '单价', key: 'price', width: 10 },
@@ -69,6 +72,7 @@ export class ExportService {
         sheet.addRow({
           orderNo: order.orderNo,
           merchant: order.merchant?.realName,
+          settlementMerchantName: order.settlementMerchantName || order.merchant?.realName || '',
           product: item.product.name,
           quantity: item.quantity,
           price: Number(item.price),

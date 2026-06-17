@@ -70,6 +70,18 @@ export class OrderController {
     return ApiResult.success(data, '订单已取消');
   }
 
+  @Put(':id/settlement-merchant-name')
+  @Roles('admin', 'boss')
+  @RequirePermission('order:manage')
+  async updateSettlementMerchantName(
+    @Param('id') id: string,
+    @Body('settlementMerchantName') settlementMerchantName: string,
+    @Request() req,
+  ) {
+    const data = await this.orderService.updateSettlementMerchantName(+id, settlementMerchantName, req.user);
+    return ApiResult.success(data, '结算商户已更新');
+  }
+
   @Post('batch-dispatch')
   @Roles('admin', 'boss')
   @RequirePermission('order:dispatch')

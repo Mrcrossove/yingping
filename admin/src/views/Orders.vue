@@ -8,6 +8,13 @@
       </template>
       <div class="filter-bar">
         <el-input v-model="keyword" placeholder="订单号" clearable class="filter-item keyword-input" @keyup.enter="handleSearch" />
+        <el-input
+          v-model="settlementMerchantName"
+          placeholder="结算商户"
+          clearable
+          class="filter-item settlement-merchant-input"
+          @keyup.enter="handleSearch"
+        />
         <el-select v-model="filterStatus" placeholder="订单状态" clearable class="filter-item status-select">
           <el-option v-for="(v, k) in statusMap" :key="k" :label="v" :value="k" />
         </el-select>
@@ -64,7 +71,10 @@
       <el-table :data="orders" v-loading="loading" stripe @selection-change="onSelectionChange" ref="orderTable">
         <el-table-column v-if="canDispatch" type="selection" width="40" :selectable="isSelectable" />
         <el-table-column prop="orderNo" label="订单编号" width="200" />
-        <el-table-column prop="merchant.realName" label="商户" width="100" />
+        <el-table-column prop="merchant.realName" label="商户账号" width="110" />
+        <el-table-column label="结算商户" width="140">
+          <template #default="{ row }">{{ row.settlementMerchantName || row.merchant?.realName || '-' }}</template>
+        </el-table-column>
         <el-table-column label="商品">
           <template #default="{ row }">
             <span v-for="(item, i) in row.items" :key="i">
@@ -99,9 +109,10 @@
         <el-table-column prop="createdAt" label="下单时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="$router.push(`/orders/${row.id}`)">详情</el-button>
+            <el-button v-if="canEditSettlementMerchant" type="primary" link @click="showSettlementMerchantDialog(row)">编辑结算商户</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -127,6 +138,25 @@
         <el-button type="primary" :disabled="!batchDeliveryId" @click="handleBatchDispatch">确认派单</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="settlementMerchantDialogVisible" title="编辑结算商户" width="460px">
+      <el-form label-width="100px">
+        <el-form-item label="订单号">{{ currentOrder?.orderNo }}</el-form-item>
+        <el-form-item label="商户账号">{{ currentOrder?.merchant?.realName || '-' }}</el-form-item>
+        <el-form-item label="结算商户">
+          <el-input
+            v-model="settlementMerchantFormName"
+            maxlength="100"
+            show-word-limit
+            placeholder="请输入结算商户名称"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="settlementMerchantDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="settlementMerchantSaving" @click="handleSaveSettlementMerchant">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -144,6 +174,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
+const settlementMerchantName = ref('')
 const filterStatus = ref('')
 const settlementType = ref('')
 const settlementStatus = ref('')
@@ -155,6 +186,7 @@ const staffLoading = ref(false)
 const role = computed(() => userStore.role)
 const canDispatch = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:dispatch'))
 const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('export:manage'))
+const canEditSettlementMerchant = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:manage'))
 const showStaffColumns = computed(() => ['boss', 'admin'].includes(role.value))
 const canFilterStaff = computed(() => ['boss', 'admin'].includes(role.value))
 const staffRoleOptions = computed(() => {
@@ -205,6 +237,7 @@ function paymentStatusText(row: any) {
 function buildQueryParams() {
   const params: any = {}
   if (keyword.value.trim()) params.keyword = keyword.value.trim()
+  if (settlementMerchantName.value.trim()) params.settlementMerchantName = settlementMerchantName.value.trim()
   if (filterStatus.value) params.status = filterStatus.value
   if (settlementType.value) params.settlementType = settlementType.value
   if (settlementStatus.value) params.settlementStatus = settlementStatus.value
@@ -239,6 +272,7 @@ function handleSearch() {
 
 function handleReset() {
   keyword.value = ''
+  settlementMerchantName.value = ''
   filterStatus.value = ''
   settlementType.value = ''
   settlementStatus.value = ''
@@ -283,6 +317,10 @@ const selectedOrders = ref<any[]>([])
 const batchVisible = ref(false)
 const batchDeliveryId = ref<number | null>(null)
 const deliverys = ref<any[]>([])
+const settlementMerchantDialogVisible = ref(false)
+const settlementMerchantSaving = ref(false)
+const settlementMerchantFormName = ref('')
+const currentOrder = ref<any | null>(null)
 
 function isSelectable(row: any) { return canDispatch.value && ['accepted', 'made'].includes(row.status) }
 function onSelectionChange(val: any[]) { selectedOrders.value = val }
@@ -303,6 +341,31 @@ async function handleBatchDispatch() {
   fetchOrders()
 }
 
+function showSettlementMerchantDialog(row: any) {
+  currentOrder.value = row
+  settlementMerchantFormName.value = row.settlementMerchantName || row.merchant?.realName || ''
+  settlementMerchantDialogVisible.value = true
+}
+
+async function handleSaveSettlementMerchant() {
+  if (!currentOrder.value) return
+  const name = settlementMerchantFormName.value.trim()
+  if (!name) {
+    ElMessage.warning('请输入结算商户名称')
+    return
+  }
+  settlementMerchantSaving.value = true
+  try {
+    const updated = await orderApi.updateSettlementMerchantName(currentOrder.value.id, name)
+    const index = orders.value.findIndex((item) => item.id === updated.id)
+    if (index >= 0) orders.value[index] = updated
+    settlementMerchantDialogVisible.value = false
+    ElMessage.success('结算商户已更新')
+  } finally {
+    settlementMerchantSaving.value = false
+  }
+}
+
 onMounted(fetchOrders)
 </script>
 
@@ -311,6 +374,7 @@ onMounted(fetchOrders)
 .filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .filter-item { flex-shrink: 0; }
 .keyword-input { width: 180px; }
+.settlement-merchant-input { width: 180px; }
 .status-select { width: 130px; }
 .settlement-select { width: 120px; }
 .settlement-status-select { width: 150px; }

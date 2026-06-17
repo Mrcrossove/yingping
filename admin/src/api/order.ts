@@ -8,6 +8,8 @@ export const orderApi = {
   deliveryStart: (id: number) => request.post(`/orders/${id}/delivery-start`),
   deliveryComplete: (id: number) => request.post(`/orders/${id}/delivery-complete`),
   cancel: (id: number) => request.post(`/orders/${id}/cancel`),
+  updateSettlementMerchantName: (id: number, settlementMerchantName: string) =>
+    request.put(`/orders/${id}/settlement-merchant-name`, { settlementMerchantName }),
   batchDispatch: (orderIds: number[], deliveryId: number) =>
     request.post('/orders/batch-dispatch', { orderIds, deliveryId }),
 }

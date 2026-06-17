@@ -36,6 +36,7 @@ export class OrderService {
     const settlementType = dto.settlementType === 'monthly' ? 'monthly' : 'wechat';
     const orderNo = this.generateOrderNo();
     const addressSnapshot = await this.resolveAddressSnapshot(dto, merchantId);
+    const settlementMerchantName = await this.resolveSettlementMerchantName(merchantId);
 
     const order = await this.prisma.$transaction(async (tx) => {
       let totalAmount = new Prisma.Decimal(0);
@@ -79,6 +80,7 @@ export class OrderService {
           stockDeducted,
           settlementType,
           settlementStatus: settlementType === 'monthly' ? 'monthly_pending' : 'unpaid',
+          settlementMerchantName,
           status: settlementType === 'monthly' ? 'made' : 'pending',
           items: {
             create: items,
@@ -130,6 +132,7 @@ export class OrderService {
     page?: number; pageSize?: number; status?: OrderStatus;
     merchantId?: number; salespersonId?: number; makerId?: number; deliveryId?: number;
     keyword?: string; startDate?: string; endDate?: string; settlementType?: string; settlementStatus?: string;
+    settlementMerchantName?: string;
   }) {
     const { page = 1, pageSize = 20 } = query;
     const where: any = {};
@@ -140,6 +143,9 @@ export class OrderService {
     if (query.deliveryId) where.deliveryId = +query.deliveryId;
     if (query.settlementType) where.settlementType = query.settlementType;
     if (query.settlementStatus) where.settlementStatus = query.settlementStatus;
+    if (query.settlementMerchantName) {
+      where.settlementMerchantName = { contains: query.settlementMerchantName.trim() };
+    }
     if (query.keyword) where.orderNo = { contains: query.keyword };
     if (query.startDate || query.endDate) {
       where.createdAt = {};
@@ -432,6 +438,53 @@ export class OrderService {
     return results;
   }
 
+  async updateSettlementMerchantName(orderId: number, settlementMerchantName: string, operator: { id: number; role: Role }) {
+    const name = (settlementMerchantName || '').trim();
+    if (!name) throw new BadRequestException('结算商户不能为空');
+    if (name.length > 100) throw new BadRequestException('结算商户不能超过100个字');
+
+    const order = await this.findOne(orderId);
+    if (order.settlementStatus === 'monthly_settled') {
+      throw new BadRequestException('已月结订单不允许修改结算商户');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { settlementMerchantName: name },
+      });
+
+      if ((order.settlementMerchantName || '') !== name) {
+        await tx.orderFlow.create({
+          data: {
+            orderId,
+            fromRole: operator.role,
+            toRole: 'admin',
+            operatorId: operator.id,
+            action: '修改结算商户',
+            remark: `${order.settlementMerchantName || '-'} -> ${name}`,
+          },
+        });
+      }
+
+      return tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { product: true } },
+          merchant: { select: { id: true, realName: true, phone: true } },
+          salesperson: { select: { id: true, realName: true, phone: true } },
+          maker: { select: { id: true, realName: true, phone: true } },
+          delivery: { select: { id: true, realName: true, phone: true } },
+          payment: true,
+          flows: {
+            include: { operator: { select: { id: true, realName: true, role: true } } },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      });
+    });
+  }
+
   async getLowStockProducts() {
     return this.prisma.product.findMany({
       where: {
@@ -548,6 +601,17 @@ export class OrderService {
     }
 
     return {};
+  }
+
+  private async resolveSettlementMerchantName(merchantId: number) {
+    const merchant = await this.prisma.user.findUnique({
+      where: { id: merchantId },
+      select: {
+        realName: true,
+        merchantProfile: { select: { shopName: true } },
+      },
+    });
+    return merchant?.merchantProfile?.shopName || merchant?.realName || '';
   }
 
   private formatAddress(address: any) {

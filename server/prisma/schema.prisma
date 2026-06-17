@@ -150,6 +150,7 @@ model Order {
   stockDeducted Boolean       @default(false) @map("stock_deducted")
   settlementType OrderSettlementType @default(wechat) @map("settlement_type")
   settlementStatus OrderSettlementStatus @default(unpaid) @map("settlement_status")
+  settlementMerchantName String? @map("settlement_merchant_name") @db.VarChar(100)
   settledAt      DateTime?   @map("settled_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
@@ -164,6 +165,7 @@ model Order {
   payment     Payment?
   reviews     Review[]
 
+  @@index([settlementMerchantName], map: "orders_settlement_merchant_name_idx")
   @@map("orders")
 }
 
