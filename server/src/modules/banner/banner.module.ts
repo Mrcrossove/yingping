@@ -8,6 +8,7 @@ import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('banners')
 export class BannerController {
@@ -24,7 +25,7 @@ export class BannerController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async findAll(@Query() query: any) {
     const { page = 1, pageSize = 20 } = query;
@@ -44,7 +45,7 @@ export class BannerController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async create(@Body() body: any) {
     const data = await this.prisma.banner.create({
@@ -61,7 +62,7 @@ export class BannerController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const data = await this.prisma.banner.update({
@@ -79,7 +80,7 @@ export class BannerController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async remove(@Param('id') id: string) {
     await this.prisma.banner.delete({ where: { id: +id } });

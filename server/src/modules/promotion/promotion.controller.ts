@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('promotion')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -34,19 +35,17 @@ export class PromotionController {
   }
 
   @Get('bindings')
-  @Roles('boss', 'admin', 'promoter')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('promotion:manage')
   async findAllBindings(@Query() query: any, @Request() req) {
-    if (req.user.role === 'promoter') query.promoterId = req.user.id;
     const data = await this.promotionService.findAllBindings(query);
     return ApiResult.success(data);
   }
 
   @Get('codes')
-  @Roles('boss', 'admin', 'promoter')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('promotion:manage')
   async findAllCodes(@Query() query: any, @Request() req) {
-    if (req.user.role === 'promoter') query.promoterId = req.user.id;
     const data = await this.promotionService.findAllCodes(query);
     return ApiResult.success(data);
   }
@@ -80,16 +79,15 @@ export class PromotionController {
   }
 
   @Get('merchant-leads')
-  @Roles('boss', 'admin', 'promoter')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('promotion:manage')
   async getMerchantLeads(@Query() query: any, @Request() req) {
-    if (req.user.role === 'promoter') query.promoterId = req.user.id;
     const data = await this.promotionService.getMerchantLeads(query);
     return ApiResult.success(data);
   }
 
   @Put('merchant-leads/:id/status')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('promotion:manage')
   async updateMerchantLeadStatus(@Param('id') id: string, @Body('status') status: string) {
     const data = await this.promotionService.updateMerchantLeadStatus(+id, status);

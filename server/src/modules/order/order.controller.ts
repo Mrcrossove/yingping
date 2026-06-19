@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -34,7 +35,7 @@ export class OrderController {
   }
 
   @Post(':id/dispatch-delivery')
-  @Roles('admin', 'boss')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('order:dispatch')
   async dispatchToDelivery(@Param('id') id: string, @Body('deliveryId') deliveryId: number, @Request() req) {
     const data = await this.orderService.dispatchToDelivery(+id, deliveryId, req.user);
@@ -71,7 +72,7 @@ export class OrderController {
   }
 
   @Put(':id/settlement-merchant-name')
-  @Roles('admin', 'boss')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('order:manage')
   async updateSettlementMerchantName(
     @Param('id') id: string,
@@ -83,7 +84,7 @@ export class OrderController {
   }
 
   @Post('batch-dispatch')
-  @Roles('admin', 'boss')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('order:dispatch')
   async batchDispatch(@Body() body: { orderIds: number[]; deliveryId: number }, @Request() req) {
     const data = await this.orderService.batchDispatch(body.orderIds, body.deliveryId, req.user);

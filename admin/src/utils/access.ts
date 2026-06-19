@@ -7,25 +7,30 @@ export const ROLE_HOME: Record<string, string> = {
 }
 
 export const ACTIVE_ROLES = ['boss', 'admin', 'delivery', 'promoter', 'merchant'] as const
+export const ASSIGNABLE_PERMISSION_ROLES = ['admin', 'delivery', 'promoter'] as const
+const ROLE_BASE_ROUTES: Record<string, string[]> = {
+  delivery: ['Orders', 'OrderDetail', 'MyEarnings'],
+  promoter: ['Promotion', 'MyEarnings'],
+}
 
 export const ROUTE_ROLES: Record<string, string[]> = {
-  Dashboard: ['boss', 'admin'],
-  Orders: ['boss', 'admin', 'delivery'],
-  OrderDetail: ['boss', 'admin', 'delivery'],
-  Products: ['boss', 'admin'],
-  Banners: ['boss', 'admin'],
-  Users: ['boss', 'admin'],
-  Merchants: ['boss', 'admin'],
-  Feedback: ['boss', 'admin'],
-  Commissions: ['boss', 'admin'],
-  Earnings: ['boss', 'admin'],
+  Dashboard: ['boss', 'admin', 'delivery', 'promoter'],
+  Orders: ['boss', 'admin', 'delivery', 'promoter'],
+  OrderDetail: ['boss', 'admin', 'delivery', 'promoter'],
+  Products: ['boss', 'admin', 'delivery', 'promoter'],
+  Banners: ['boss', 'admin', 'delivery', 'promoter'],
+  Users: ['boss', 'admin', 'delivery', 'promoter'],
+  Merchants: ['boss', 'admin', 'delivery', 'promoter'],
+  Feedback: ['boss', 'admin', 'delivery', 'promoter'],
+  Commissions: ['boss', 'admin', 'delivery', 'promoter'],
+  Earnings: ['boss', 'admin', 'delivery', 'promoter'],
   MyEarnings: ['delivery', 'promoter'],
-  Withdrawals: ['boss', 'admin'],
-  Promotion: ['boss', 'admin', 'promoter'],
+  Withdrawals: ['boss', 'admin', 'delivery', 'promoter'],
+  Promotion: ['boss', 'admin', 'delivery', 'promoter'],
   Permissions: ['boss'],
-  AuditLogs: ['boss', 'admin'],
-  Payments: ['boss', 'admin'],
-  Settings: ['boss', 'admin'],
+  AuditLogs: ['boss', 'admin', 'delivery', 'promoter'],
+  Payments: ['boss', 'admin', 'delivery', 'promoter'],
+  Settings: ['boss', 'admin', 'delivery', 'promoter'],
 }
 
 export const ROUTE_PERMISSIONS: Record<string, string> = {
@@ -65,11 +70,15 @@ export function getUserPermissions() {
   }
 }
 
+export function isAssignablePermissionRole(role: string) {
+  return ASSIGNABLE_PERMISSION_ROLES.includes(role as (typeof ASSIGNABLE_PERMISSION_ROLES)[number])
+}
+
 export function getHomePath(role: string) {
-  if (role === 'admin') {
+  if (isAssignablePermissionRole(role)) {
     const permissions = getUserPermissions()
     const entry = Object.entries(ROUTE_PERMISSIONS).find(([, permission]) => permissions.includes(permission))
-    return entry ? `/${entry[0] === 'OrderDetail' ? 'orders' : routeNameToPath(entry[0])}` : '/403'
+    if (entry) return `/${entry[0] === 'OrderDetail' ? 'orders' : routeNameToPath(entry[0])}`
   }
   return ROLE_HOME[role] || '/403'
 }
@@ -98,11 +107,13 @@ function routeNameToPath(name: string) {
 
 export function canAccessRoute(routeName: unknown, role: string) {
   if (!routeName) return true
-  const roles = ROUTE_ROLES[String(routeName)]
+  const name = String(routeName)
+  const roles = ROUTE_ROLES[name]
   if (roles && !roles.includes(role)) return false
   if (role === 'boss') return true
-  if (role === 'admin') {
-    const permission = ROUTE_PERMISSIONS[String(routeName)]
+  if (ROLE_BASE_ROUTES[role]?.includes(name)) return true
+  if (isAssignablePermissionRole(role)) {
+    const permission = ROUTE_PERMISSIONS[name]
     const permissions = getUserPermissions()
     return !permission || permissions.includes(permission)
   }
@@ -116,6 +127,6 @@ export function isSupportedRole(role: string) {
 export function hasPermission(permission: string) {
   const role = getUserRole()
   if (role === 'boss') return true
-  if (role !== 'admin') return true
+  if (!isAssignablePermissionRole(role)) return false
   return getUserPermissions().includes(permission)
 }

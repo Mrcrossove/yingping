@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -13,7 +14,7 @@ export class UserController {
   constructor(private userService: UserService) {}
 
   @Get()
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async findAll(@Query() query: any) {
     const data = await this.userService.findAll(query);
@@ -21,7 +22,7 @@ export class UserController {
   }
 
   @Get('earning-options')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('finance:view')
   async getEarningOptions(@Query() query: any) {
     const data = await this.userService.getEarningOptions(query);
@@ -29,7 +30,7 @@ export class UserController {
   }
 
   @Get('pending-merchants')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async getPendingMerchants(@Query() query: any) {
     const data = await this.userService.getPendingMerchants(query);
@@ -37,14 +38,16 @@ export class UserController {
   }
 
   @Get('dispatch-staff')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
+  @RequirePermission('order:dispatch')
   async getDispatchStaff(@Query('role') role: string) {
     const data = await this.userService.getDispatchStaff(role);
     return ApiResult.success(data);
   }
 
   @Get('merchants')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
+  @RequirePermission('user:manage')
   async getMerchants(@Query() query: any) {
     const data = await this.userService.getMerchants(query);
     return ApiResult.success(data);
@@ -65,7 +68,7 @@ export class UserController {
   }
 
   @Get('merchant-dashboard')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async getMerchantDashboard(@Query() query: any) {
     const data = await this.userService.getMerchantDashboard(query);
@@ -73,7 +76,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async findOne(@Param('id') id: string) {
     const data = await this.userService.findOne(+id);
@@ -81,7 +84,7 @@ export class UserController {
   }
 
   @Post()
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async create(@Body() body: any) {
     const data = await this.userService.create(body, null);
@@ -89,7 +92,7 @@ export class UserController {
   }
 
   @Put(':id')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const data = await this.userService.update(+id, body);
@@ -98,7 +101,7 @@ export class UserController {
 
 
   @Post(':id/reset-password')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async resetPassword(@Param('id') id: string, @Body('password') password: string) {
     const data = await this.userService.resetPassword(+id, password);
@@ -106,7 +109,7 @@ export class UserController {
   }
 
   @Post(':id/approve-merchant')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async approveMerchant(@Param('id') id: string) {
     const data = await this.userService.approveMerchant(+id);
@@ -114,7 +117,7 @@ export class UserController {
   }
 
   @Post(':id/reject-merchant')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async rejectMerchant(@Param('id') id: string) {
     const data = await this.userService.rejectMerchant(+id);
@@ -122,7 +125,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('user:manage')
   async remove(@Param('id') id: string, @Request() req) {
     const data = await this.userService.remove(+id, req.user.id);

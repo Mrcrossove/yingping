@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('earnings')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -19,7 +20,7 @@ export class EarningController {
   }
 
   @Get()
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('finance:view')
   async findAll(@Query() query: any) {
     const data = await this.earningService.findAll(query);

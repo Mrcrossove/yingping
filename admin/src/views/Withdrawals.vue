@@ -11,15 +11,15 @@
               <el-option label="已拒绝" value="rejected" />
             </el-select>
             <el-button type="primary" @click="fetchList">查询</el-button>
-            <el-button type="success" @click="handleExport" style="margin-left: 8px;">导出Excel</el-button>
+            <el-button v-if="canExport" type="success" @click="handleExport" style="margin-left: 8px;">导出Excel</el-button>
           </div>
         </div>
       </template>
-      <div style="margin-bottom: 12px;" v-if="selectedRows.length > 0">
+      <div style="margin-bottom: 12px;" v-if="canManageWithdrawal && selectedRows.length > 0">
         <el-button type="success" @click="handleBatchApprove">批量通过 ({{ selectedRows.length }})</el-button>
       </div>
       <el-table :data="list" v-loading="loading" stripe @selection-change="onSelectionChange" ref="withdrawTable">
-        <el-table-column type="selection" width="40" :selectable="(row: any) => row.status === 'pending'" />
+        <el-table-column v-if="canManageWithdrawal" type="selection" width="40" :selectable="(row: any) => row.status === 'pending'" />
         <el-table-column prop="user.realName" label="姓名" width="100" />
         <el-table-column label="角色" width="100">
           <template #default="{ row }">{{ roleMap[row.user?.role] || row.user?.role }}</template>
@@ -39,7 +39,7 @@
         <el-table-column prop="createdAt" label="申请时间" width="170">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right" v-if="userStore.role === 'boss' || userStore.role === 'admin'">
+        <el-table-column label="操作" width="160" fixed="right" v-if="canManageWithdrawal">
           <template #default="{ row }">
             <template v-if="row.status === 'pending'">
               <el-button type="success" link @click="handleApprove(row.id)">通过</el-button>
@@ -68,12 +68,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { withdrawalApi, downloadApi } from '@/api/index'
-import { useUserStore } from '@/stores/user'
+import { hasPermission } from '@/utils/access'
 
-const userStore = useUserStore()
 const loading = ref(false)
 const list = ref<any[]>([])
 const total = ref(0)
@@ -84,6 +83,8 @@ const rejectDialogVisible = ref(false)
 const rejectRemark = ref('')
 const currentRejectId = ref(0)
 const selectedRows = ref<any[]>([])
+const canManageWithdrawal = computed(() => hasPermission('withdrawal:manage'))
+const canExport = computed(() => hasPermission('export:manage'))
 
 const statusMap: Record<string, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝', paid: '已打款' }
 const roleMap: Record<string, string> = { delivery: '配送员', promoter: '推广员' }

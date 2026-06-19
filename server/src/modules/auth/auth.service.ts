@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import axios from 'axios';
 import { NotificationService } from '../notification/notification.service';
+import { isAssignablePermissionRole } from '../../common/access-roles';
 
 @Injectable()
 export class AuthService {
@@ -149,7 +150,7 @@ export class AuthService {
   private async toUserInfo(user: any) {
     const { password: _, ...userInfo } = user;
     if (user.role === 'boss') return { ...userInfo, permissions: ['*'] };
-    if (user.role !== 'admin') return { ...userInfo, permissions: [] };
+    if (!isAssignablePermissionRole(user.role)) return { ...userInfo, permissions: [] };
 
     const permissions = await this.prisma.adminPermission.findMany({
       where: { adminId: user.id },

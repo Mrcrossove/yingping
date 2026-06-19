@@ -1,7 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { PrismaService } from '../modules/prisma/prisma.service';
+import { isAssignablePermissionRole } from './access-roles';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -21,7 +22,9 @@ export class PermissionsGuard implements CanActivate {
     if (!user) throw new UnauthorizedException('请先登录');
 
     if (user.role === 'boss') return true;
-    if (user.role !== 'admin') return true;
+    if (!isAssignablePermissionRole(user.role)) {
+      throw new ForbiddenException('无权访问');
+    }
 
     const ap = await this.prisma.adminPermission.findMany({
       where: { adminId: user.id },

@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('commissions')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -13,7 +14,7 @@ export class CommissionController {
   constructor(private commissionService: CommissionService) {}
 
   @Get()
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('commission:manage')
   async findAll(@Query() query: any) {
     const data = await this.commissionService.findAll(query);
@@ -21,7 +22,7 @@ export class CommissionController {
   }
 
   @Get('staff')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('commission:manage')
   async getStaff() {
     const data = await this.commissionService.getStaff();
@@ -29,7 +30,7 @@ export class CommissionController {
   }
 
   @Post('product/:productId')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('commission:manage')
   async setProductRules(@Param('productId') productId: string, @Body('rules') rules: any[]) {
     const data = await this.commissionService.setProductRules(+productId, rules);
@@ -37,7 +38,7 @@ export class CommissionController {
   }
 
   @Delete(':id')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('commission:manage')
   async deleteRule(@Param('id') id: string) {
     const data = await this.commissionService.deleteRule(+id);

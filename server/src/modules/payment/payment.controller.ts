@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('payments')
 export class PaymentController {
@@ -77,7 +78,7 @@ export class PaymentController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('finance:view')
   async getPayments(@Query() query: any) {
     const data = await this.paymentService.getPayments(query);
@@ -86,7 +87,7 @@ export class PaymentController {
 
   @Post('refund/:orderId')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('finance:view')
   async refund(@Param('orderId') orderId: string, @Request() req) {
     const data = await this.paymentService.refund(+orderId, req.user);

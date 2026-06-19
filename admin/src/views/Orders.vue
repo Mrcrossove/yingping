@@ -370,12 +370,12 @@ const staffId = ref<number | null>(null)
 const staffOptions = ref<any[]>([])
 const staffLoading = ref(false)
 const role = computed(() => userStore.role)
-const canDispatch = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:dispatch'))
-const canExport = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('export:manage'))
-const canEditSettlementMerchant = computed(() => ['boss', 'admin'].includes(role.value) && hasPermission('order:manage'))
-const showStaffColumns = computed(() => ['boss', 'admin'].includes(role.value))
-const canFilterStaff = computed(() => ['boss', 'admin'].includes(role.value))
-const hasMobileAdvancedFilters = computed(() => ['boss', 'admin'].includes(role.value))
+const canDispatch = computed(() => hasPermission('order:dispatch'))
+const canExport = computed(() => hasPermission('export:manage'))
+const canEditSettlementMerchant = computed(() => hasPermission('order:manage'))
+const showStaffColumns = computed(() => hasPermission('order:manage') || hasPermission('order:dispatch'))
+const canFilterStaff = computed(() => hasPermission('user:manage'))
+const hasMobileAdvancedFilters = computed(() => hasPermission('order:manage') || hasPermission('order:dispatch'))
 const mobileAdvancedFilterCount = computed(() => {
   let count = 0
   if (settlementMerchantName.value.trim()) count += 1
@@ -386,7 +386,7 @@ const mobileAdvancedFilterCount = computed(() => {
   return count
 })
 const staffRoleOptions = computed(() => {
-  if (['boss', 'admin'].includes(role.value)) {
+  if (canFilterStaff.value) {
     return [
       { label: '商户', value: 'merchant' },
       { label: '配送员', value: 'delivery' },

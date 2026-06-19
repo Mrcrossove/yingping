@@ -6,10 +6,11 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { Response } from 'express';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('export')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('boss', 'admin')
+@Roles(...BACKOFFICE_PERMISSION_ROLES)
 export class ExportController {
   constructor(private exportService: ExportService) {}
 

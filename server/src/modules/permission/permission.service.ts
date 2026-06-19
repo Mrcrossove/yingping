@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isAssignablePermissionRole } from '../../common/access-roles';
 
 @Injectable()
 export class PermissionService {
@@ -27,6 +28,7 @@ export class PermissionService {
   }
 
   async getAdminPermissions(adminId: number) {
+    await this.ensureAssignableUser(adminId);
     return this.prisma.adminPermission.findMany({
       where: { adminId },
       include: { permission: true },
@@ -34,6 +36,7 @@ export class PermissionService {
   }
 
   async setAdminPermissions(adminId: number, permissionIds: number[]) {
+    await this.ensureAssignableUser(adminId);
     await this.prisma.adminPermission.deleteMany({ where: { adminId } });
     if (permissionIds.length > 0) {
       await this.prisma.adminPermission.createMany({
@@ -60,6 +63,17 @@ export class PermissionService {
         data: missingPermissions,
         skipDuplicates: true,
       });
+    }
+  }
+
+  private async ensureAssignableUser(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) throw new BadRequestException('员工不存在');
+    if (!isAssignablePermissionRole(user.role)) {
+      throw new BadRequestException('只能给管理员、配送员或推广员分配权限');
     }
   }
 }

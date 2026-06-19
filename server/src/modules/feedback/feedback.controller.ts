@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('feedback')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -27,7 +28,7 @@ export class FeedbackController {
   }
 
   @Get()
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('feedback:manage')
   async findAll(@Query() query: any) {
     const data = await this.feedbackService.findAll(query);
@@ -35,7 +36,7 @@ export class FeedbackController {
   }
 
   @Put(':id/status')
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('feedback:manage')
   async updateStatus(@Param('id') id: string, @Body() body: any, @Request() req) {
     const data = await this.feedbackService.updateStatus(+id, req.user.id, body);

@@ -147,7 +147,7 @@ function roleTagType(role: string) {
 }
 
 function canAssignPermission(row: any) {
-  return userStore.role === 'boss' && row.role === 'admin'
+  return userStore.role === 'boss' && ['admin', 'delivery', 'promoter'].includes(row.role)
 }
 
 async function fetchUsers() {

@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { RequirePermission } from '../../common/permissions.decorator';
 import { PermissionsGuard } from '../../common/permissions.guard';
 import { ApiResult } from '../../common/api-result';
+import { BACKOFFICE_PERMISSION_ROLES } from '../../common/access-roles';
 
 @Controller('categories')
 export class CategoryController {
@@ -25,7 +26,7 @@ export class CategoryController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async create(@Body() body: any) {
     const data = await this.categoryService.create(body);
@@ -34,7 +35,7 @@ export class CategoryController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const data = await this.categoryService.update(+id, body);
@@ -43,7 +44,7 @@ export class CategoryController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('boss', 'admin')
+  @Roles(...BACKOFFICE_PERMISSION_ROLES)
   @RequirePermission('product:manage')
   async remove(@Param('id') id: string) {
     const data = await this.categoryService.remove(+id);

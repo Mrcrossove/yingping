@@ -152,7 +152,7 @@ function statusTagType(status: string) {
 }
 
 const canDispatch = computed(() =>
-  ['boss', 'admin'].includes(userStore.role) && hasPermission('order:dispatch')
+  hasPermission('order:dispatch')
 )
 const canDeliver = computed(() => userStore.role === 'delivery')
 const isFinishedOrder = computed(() =>
@@ -164,7 +164,7 @@ const canCancel = computed(() =>
 const detailColumns = computed(() => (isMobile.value ? 1 : 2))
 const canOperate = computed(() =>
   !isFinishedOrder.value && (
-    ['boss', 'admin'].includes(userStore.role)
+    canDispatch.value
     || (canDeliver.value && ['made', 'delivering'].includes(order.value?.status))
   )
 )

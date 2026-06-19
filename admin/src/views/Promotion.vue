@@ -128,6 +128,7 @@ import { computed, ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { promotionApi } from '@/api/index'
 import { useUserStore } from '@/stores/user'
+import { hasPermission } from '@/utils/access'
 
 const userStore = useUserStore()
 const codes = reactive({ list: [], total: 0 })
@@ -145,8 +146,8 @@ const generating = ref(false)
 const bindingsPage = ref(1)
 const leadsPage = ref(1)
 const isPromoter = computed(() => userStore.role === 'promoter')
-const canManagePromotion = computed(() => ['boss', 'admin'].includes(userStore.role))
-const canManageLead = computed(() => ['boss', 'admin'].includes(userStore.role))
+const canManagePromotion = computed(() => hasPermission('promotion:manage'))
+const canManageLead = computed(() => hasPermission('promotion:manage'))
 const leadStatusMap: Record<string, string> = {
   pending: '待跟进',
   followed: '已跟进',
